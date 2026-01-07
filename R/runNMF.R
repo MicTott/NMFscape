@@ -83,7 +83,7 @@ runNMFscape <- function(x, k, assay = "logcounts", name = "NMF",
         message("Running NMF with k=", k, " factors...")
     }
     
-    nmf_result <- RcppML::nmf(A = mat, k = k, tol = tol, maxit = maxit,
+    nmf_result <- RcppML::nmf(mat, k = k, tol = tol, maxit = maxit,
                               L1 = L1, verbose = verbose, ...)
     
     # Extract results
