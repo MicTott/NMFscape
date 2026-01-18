@@ -1,4 +1,4 @@
-# NMFscape
+# NMFscape <img src="man/figures/logo.png" align="right" height="139" alt="NMFscape logo" />
 
 Fast Non-negative Matrix Factorization for Single Cell and Spatial Data using RcppML
 
