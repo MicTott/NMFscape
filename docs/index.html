@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>BiocNMF: Fast Non-negative Matrix Factorization for Single Cell and Spatial Data • BiocNMF</title>
+<title>NMFscape: Fast Non-negative Matrix Factorization for Single Cell and Spatial Data • NMFscape</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="BiocNMF: Fast Non-negative Matrix Factorization for Single Cell and Spatial Data">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="NMFscape: Fast Non-negative Matrix Factorization for Single Cell and Spatial Data">
 <meta name="description" content="High-performance non-negative matrix factorization (NMF) methods for  SingleCellExperiment and SpatialExperiment objects using the RcppML backend.
 ">
 <meta property="og:description" content="High-performance non-negative matrix factorization (NMF) methods for  SingleCellExperiment and SpatialExperiment objects using the RcppML backend.
@@ -22,7 +22,7 @@
 
     <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
 
-    <a class="navbar-brand me-2" href="index.html">BiocNMF</a>
+    <a class="navbar-brand me-2" href="index.html">NMFscape</a>
 
     <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.99.0</small>
 
@@ -33,13 +33,12 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
-<li class="nav-item"><a class="nav-link" href="articles/BiocNMF.html">Get started</a></li>
+<li class="nav-item"><a class="nav-link" href="articles/NMFscape.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/getting-started.html">Getting Started</a></li>
-    <li><a class="dropdown-item" href="articles/consensus-nmf.html">Consensus NMF</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -48,7 +47,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json">
 </form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/MicTott/BiocNMF" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/MicTott/NMFscape" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -57,74 +56,35 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header"><h1 id="biocnmf">BiocNMF<a class="anchor" aria-label="anchor" href="#biocnmf"></a>
+<div class="page-header"><h1 id="nmfscape">NMFscape<a class="anchor" aria-label="anchor" href="#nmfscape"></a>
 </h1></div>
 <p>Fast Non-negative Matrix Factorization for Single Cell and Spatial Data using RcppML</p>
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>BiocNMF provides high-performance non-negative matrix factorization (NMF) methods for SingleCellExperiment and SpatialExperiment objects. The package features:</p>
+<p>NMFscape provides high-performance non-negative matrix factorization (NMF) methods for SingleCellExperiment and SpatialExperiment objects. The package features:</p>
 <ul>
 <li>
 <strong>Fast NMF</strong>: Uses the RcppML backend for high-performance matrix factorization</li>
 <li>
-<strong>Consensus NMF</strong>: Implements true consensus clustering methodology from Kotliar et al. (eLife 2019)</li>
-<li>
 <strong>Bioconductor Integration</strong>: Seamless workflow with SingleCellExperiment and SpatialExperiment objects</li>
 <li>
-<strong>Rich Diagnostics</strong>: Comprehensive stability metrics and visualization functions</li>
+<strong>Visualization Tools</strong>: Comprehensive plotting functions for downstream analysis</li>
+<li>
+<strong>Cell Type Analysis</strong>: Differential program analysis for cell type mapping</li>
 </ul>
 </div>
 <div class="section level2">
 <h2 id="features">Features<a class="anchor" aria-label="anchor" href="#features"></a>
 </h2>
 <div class="section level3">
-<h3 id="standard-nmf">Standard NMF<a class="anchor" aria-label="anchor" href="#standard-nmf"></a>
+<h3 id="core-nmf-functions">Core NMF Functions<a class="anchor" aria-label="anchor" href="#core-nmf-functions"></a>
 </h3>
 <ul>
 <li>
-<code><a href="reference/runNMF.html">runNMF()</a></code> - Fast NMF using RcppML backend</li>
+<code><a href="reference/runNMFscape.html">runNMFscape()</a></code> - Fast NMF using RcppML backend</li>
 <li>Results stored in <code><a href="https://rdrr.io/pkg/SingleCellExperiment/man/reducedDims.html" class="external-link">reducedDims()</a></code> with basis in <code>metadata()</code>
 </li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="consensus-nmf-cnmf">Consensus NMF (cNMF)<a class="anchor" aria-label="anchor" href="#consensus-nmf-cnmf"></a>
-</h3>
-<ul>
-<li>
-<code><a href="reference/runConsensusNMF.html">runConsensusNMF()</a></code> - True consensus clustering implementation</li>
-<li>Density filtering to remove outlier gene programs</li>
-<li>K-means clustering of gene expression programs across runs<br>
-</li>
-<li>Clustering-based stability metrics for optimal K selection</li>
-<li>Non-negative least squares refitting for optimal reconstruction</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="accessor-functions">Accessor Functions<a class="anchor" aria-label="anchor" href="#accessor-functions"></a>
-</h3>
-<ul>
-<li>
-<code><a href="reference/getConsensusGEPs.html">getConsensusGEPs()</a></code> - Extract consensus gene expression programs</li>
-<li>
-<code><a href="reference/getGEPUsage.html">getGEPUsage()</a></code> - Get program usage per cell</li>
-<li>
-<code><a href="reference/getStabilityMetrics.html">getStabilityMetrics()</a></code> - Clustering stability metrics</li>
-<li>
-<code><a href="reference/getTopGEPFeatures.html">getTopGEPFeatures()</a></code> - Top contributing genes per program</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="visualization">Visualization<a class="anchor" aria-label="anchor" href="#visualization"></a>
-</h3>
-<ul>
-<li>
-<code><a href="reference/plotStability.html">plotStability()</a></code> - Stability metrics for K selection</li>
-<li>
-<code><a href="reference/plotGEPs.html">plotGEPs()</a></code> - Gene expression program heatmaps</li>
-<li>
-<code><a href="reference/plotGEPUsage.html">plotGEPUsage()</a></code> - Program usage on reduced dimensions</li>
 </ul>
 </div>
 </div>
@@ -135,60 +95,10 @@
 <code class="sourceCode R"><span><span class="co"># Install from GitHub</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"devtools"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"devtools"</span><span class="op">)</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"MicTott/BiocNMF"</span><span class="op">)</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"MicTott/NMFscape"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Load package</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/MicTott/BiocNMF" class="external-link">BiocNMF</a></span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="quick-start">Quick Start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
-</h2>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/MicTott/BiocNMF" class="external-link">BiocNMF</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">scuttle</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Create example data</span></span>
-<span><span class="va">sce</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/scuttle/man/mockSCE.html" class="external-link">mockSCE</a></span><span class="op">(</span>ngenes <span class="op">=</span> <span class="fl">1000</span>, ncells <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span>
-<span><span class="va">sce</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/scuttle/man/logNormCounts.html" class="external-link">logNormCounts</a></span><span class="op">(</span><span class="va">sce</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Standard NMF</span></span>
-<span><span class="va">sce</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/runNMF.html">runNMF</a></span><span class="op">(</span><span class="va">sce</span>, k <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
-<span><span class="va">nmf_coords</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/SingleCellExperiment/man/reducedDims.html" class="external-link">reducedDim</a></span><span class="op">(</span><span class="va">sce</span>, <span class="st">"NMF"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Consensus NMF for robust gene expression programs</span></span>
-<span><span class="va">sce</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/runConsensusNMF.html">runConsensusNMF</a></span><span class="op">(</span><span class="va">sce</span>, k_range <span class="op">=</span> <span class="fl">5</span><span class="op">:</span><span class="fl">15</span>, n_runs <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Access results</span></span>
-<span><span class="va">geps</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/getConsensusGEPs.html">getConsensusGEPs</a></span><span class="op">(</span><span class="va">sce</span><span class="op">)</span>           <span class="co"># Gene expression programs</span></span>
-<span><span class="va">usage</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/getGEPUsage.html">getGEPUsage</a></span><span class="op">(</span><span class="va">sce</span><span class="op">)</span>               <span class="co"># Cell usage</span></span>
-<span><span class="va">optimal_k</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/getOptimalK.html">getOptimalK</a></span><span class="op">(</span><span class="va">sce</span><span class="op">)</span>           <span class="co"># Selected K value</span></span>
-<span><span class="va">top_genes</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/getTopGEPFeatures.html">getTopGEPFeatures</a></span><span class="op">(</span><span class="va">sce</span><span class="op">)</span>     <span class="co"># Top genes per program</span></span>
-<span></span>
-<span><span class="co"># Visualize results</span></span>
-<span><span class="fu"><a href="reference/plotStability.html">plotStability</a></span><span class="op">(</span><span class="va">sce</span><span class="op">)</span>                      <span class="co"># K selection plot</span></span>
-<span><span class="fu"><a href="reference/plotGEPs.html">plotGEPs</a></span><span class="op">(</span><span class="va">sce</span>, programs <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span>           <span class="co"># Program heatmap</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="methodology">Methodology<a class="anchor" aria-label="anchor" href="#methodology"></a>
-</h2>
-<div class="section level3">
-<h3 id="consensus-nmf-algorithm">Consensus NMF Algorithm<a class="anchor" aria-label="anchor" href="#consensus-nmf-algorithm"></a>
-</h3>
-<p>BiocNMF implements the consensus clustering approach from <a href="https://elifesciences.org/articles/43803" class="external-link">Kotliar et al. (2019)</a>:</p>
-<ol style="list-style-type: decimal">
-<li>
-<strong>Multiple NMF runs</strong>: Generate many gene expression programs</li>
-<li>
-<strong>Density filtering</strong>: Remove outlier programs using local density</li>
-<li>
-<strong>Consensus clustering</strong>: Group similar programs with k-means</li>
-<li>
-<strong>Stability assessment</strong>: Clustering-based metrics for K selection</li>
-<li>
-<strong>Matrix refitting</strong>: Optimal usage via non-negative least squares</li>
-</ol>
-<p>This approach provides much more robust and stable gene expression programs compared to simple averaging methods.</p>
-</div>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/MicTott/NMFscape" class="external-link">NMFscape</a></span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="requirements">Requirements<a class="anchor" aria-label="anchor" href="#requirements"></a>
@@ -196,16 +106,15 @@
 <ul>
 <li>R (&gt;= 4.3.0)</li>
 <li>Bioconductor packages: SingleCellExperiment, SummarizedExperiment</li>
-<li>RcppML for fast NMF computation</li>
+<li>RcppML for fast NMF computation (CRAN v0.3.7)</li>
 <li>ggplot2 for visualization (suggested)</li>
 </ul>
 </div>
 <div class="section level2">
 <h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
 </h2>
-<p>If you use BiocNMF in your research, please cite:</p>
+<p>If you use NMFscape in your research, please cite:</p>
 <ul>
-<li>The original consensus NMF paper: Kotliar et al. (2019) “Identifying gene expression programs of cell-type identity and cellular activity with single-cell RNA-Seq” eLife</li>
 <li>RcppML: DeBruine et al. (2021) “High-performance non-negative matrix factorization for large single cell data”</li>
 </ul>
 </div>
@@ -217,14 +126,14 @@
 <div class="section level2">
 <h2 id="issues">Issues<a class="anchor" aria-label="anchor" href="#issues"></a>
 </h2>
-<p>Please report issues on <a href="https://github.com/MicTott/BiocNMF/issues" class="external-link">GitHub Issues</a>.</p>
+<p>Please report issues on <a href="https://github.com/MicTott/NMFscape/issues" class="external-link">GitHub Issues</a>.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
-<li><a href="https://github.com/MicTott/BiocNMF/" class="external-link">Browse source code</a></li>
-<li><a href="https://github.com/MicTott/BiocNMF/issues" class="external-link">Report a bug</a></li>
+<li><a href="https://github.com/MicTott/NMFscape/" class="external-link">Browse source code</a></li>
+<li><a href="https://github.com/MicTott/NMFscape/issues" class="external-link">Report a bug</a></li>
 </ul>
 </div>
 
@@ -239,7 +148,7 @@
 <div class="citation">
 <h2 data-toc-skip>Citation</h2>
 <ul class="list-unstyled">
-<li><a href="authors.html#citation">Citing BiocNMF</a></li>
+<li><a href="authors.html#citation">Citing NMFscape</a></li>
 </ul>
 </div>
 

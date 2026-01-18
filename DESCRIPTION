@@ -13,9 +13,8 @@ Description: This package provides high-performance non-negative matrix
     spatial genomics data, with seamless integration into Bioconductor workflows.
 License: Artistic-2.0
 Encoding: UTF-8
-LazyData: true
-Depends: 
-    R (>= 4.3.0),
+Depends:
+    R (>= 4.4.0),
     BiocGenerics,
     SingleCellExperiment
 Imports:
@@ -28,7 +27,8 @@ Imports:
     parallel,
     Matrix,
     ggplot2,
-    scran
+    scran,
+    pals
 Suggests:
     testthat (>= 3.0.0),
     knitr,
@@ -38,15 +38,13 @@ Suggests:
     scater,
     uwot,
     ggrepel,
-    pheatmap,
-    clusterProfiler,
-    org.Hs.eg.db,
-    org.Mm.eg.db,
     SpatialExperiment,
     scRNAseq,
-    patchwork
+    patchwork,
+    pheatmap
 VignetteBuilder: knitr
-biocViews: DimensionReduction, FeatureExtraction, Clustering, 
+biocViews: NonnegativeMatrixFactorization,
+    GeneExpression, DifferentialExpression,
     RNASeq, SingleCell, Transcriptomics, Spatial, Software
 BugReports: https://github.com/MicTott/NMFscape/issues
 URL: https://github.com/MicTott/NMFscape, https://mictott.github.io/NMFscape/

@@ -34,7 +34,12 @@ Creates volcano plots showing fold enrichment vs. statistical significance
 for differentially expressed NMF programs across cell types.
 }
 \examples{
-deps <- FindAllDEPs(sce, "cell_type") 
+library(scuttle)
+sce <- mockSCE(ngenes = 100, ncells = 50)
+sce <- logNormCounts(sce)
+sce <- runNMFscape(sce, k = 3, verbose = FALSE)
+sce$celltype <- sample(c("A", "B"), ncol(sce), replace = TRUE)
+deps <- FindAllDEPs(sce, cell_type_col = "celltype")
 plotDEPsVolcano(deps)
 
 }

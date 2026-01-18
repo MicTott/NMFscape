@@ -18,6 +18,10 @@ Matrix with cells x factors (coefficient matrix, same as reducedDim)
 Extract NMF coefficient matrix from SingleCellExperiment object
 }
 \examples{
-# sce <- runNMFscape(sce, k = 10)
-# coeffs <- getCoefficients(sce)
+library(scuttle)
+sce <- mockSCE(ngenes = 100, ncells = 50)
+sce <- logNormCounts(sce)
+sce <- runNMFscape(sce, k = 3, verbose = FALSE)
+coeffs <- getCoefficients(sce)
+dim(coeffs)
 }

@@ -24,10 +24,6 @@ navbar:
       menu:
       - text: Getting Started
         href: articles/getting-started.html
-      - text: Consensus NMF
-        href: articles/consensus-nmf.html
-      - text: GO Enrichment Analysis
-        href: articles/go-enrichment.html
     news:
       text: Changelog
       href: news/index.html
@@ -38,54 +34,32 @@ navbar:
 
 reference:
 - title: Main Functions
-  desc: Core NMF and consensus NMF functions
+  desc: Core NMF functions
   contents:
   - runNMFscape
-  - runConsensusNMF
 
-- title: Standard NMF Accessors
-  desc: Access standard NMF results
+- title: NMF Accessors
+  desc: Access NMF results
   contents:
   - getBasis
   - getCoefficients
   - getTopFeatures
   - reconstructNMF
 
-- title: Consensus NMF Accessors
-  desc: Access consensus NMF results
-  contents:
-  - getConsensusGEPs
-  - getGEPUsage
-  - getStabilityMetrics
-  - getOptimalK
-  - getTopGEPFeatures
-  - getConsensusNMFInfo
-  - getAvailableK
-
 - title: Visualization
-  desc: Plotting functions for diagnostics and results
+  desc: Plotting functions for results
   contents:
   - vizUMAP
   - vizDimRed
-  - plotStability
-  - plotStabilityComparison
-  - plotGEPs
-  - plotGEPUsage
+  - plotProgramHeatmap
+  - plotProgramDots
 
-- title: GO Enrichment Analysis
-  desc: Gene Ontology enrichment and visualization functions
+- title: Cell Type Analysis
+  desc: Differential program analysis for cell type mapping
   contents:
   - FindAllDEPs
-  - runProgramGOEnrichment
-  - prepareProgramGeneSets
-  - plotGOBarChart
-  - plotGODotPlot
-  - plotGONetwork
-  - plotDEPsDots
   - plotDEPsVolcano
-  - plotProgramGenes
-  - plotMultipleProgramsGO
-  - saveGOPlotsToPDF
+  - plotDEPsHeatmap
 
 
 articles:
@@ -93,8 +67,6 @@ articles:
   navbar: ~
   contents:
   - getting-started
-  - consensus-nmf
-  - go-enrichment
 
 authors:
   Michael Totty:

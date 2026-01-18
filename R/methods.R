@@ -6,8 +6,12 @@
 #' @return Matrix with features x factors (basis matrix)
 #' @export
 #' @examples
-#' # sce <- runNMFscape(sce, k = 10)
-#' # basis <- getBasis(sce)
+#' library(scuttle)
+#' sce <- mockSCE(ngenes = 100, ncells = 50)
+#' sce <- logNormCounts(sce)
+#' sce <- runNMFscape(sce, k = 3, verbose = FALSE)
+#' basis <- getBasis(sce)
+#' dim(basis)
 getBasis <- function(x, name = "NMF") {
     if (!is(x, "SingleCellExperiment")) {
         stop("x must be a SingleCellExperiment object")
@@ -29,8 +33,12 @@ getBasis <- function(x, name = "NMF") {
 #' @return Matrix with cells x factors (coefficient matrix, same as reducedDim)
 #' @export
 #' @examples
-#' # sce <- runNMFscape(sce, k = 10)
-#' # coeffs <- getCoefficients(sce)
+#' library(scuttle)
+#' sce <- mockSCE(ngenes = 100, ncells = 50)
+#' sce <- logNormCounts(sce)
+#' sce <- runNMFscape(sce, k = 3, verbose = FALSE)
+#' coeffs <- getCoefficients(sce)
+#' dim(coeffs)
 getCoefficients <- function(x, name = "NMF") {
     if (!is(x, "SingleCellExperiment")) {
         stop("x must be a SingleCellExperiment object")
@@ -52,8 +60,12 @@ getCoefficients <- function(x, name = "NMF") {
 #' @return List of character vectors, each containing top features for a factor
 #' @export
 #' @examples
-#' # sce <- runNMFscape(sce, k = 10)
-#' # top_genes <- getTopFeatures(sce, n = 20)
+#' library(scuttle)
+#' sce <- mockSCE(ngenes = 100, ncells = 50)
+#' sce <- logNormCounts(sce)
+#' sce <- runNMFscape(sce, k = 3, verbose = FALSE)
+#' top_genes <- getTopFeatures(sce, n = 10)
+#' head(top_genes[[1]])
 getTopFeatures <- function(x, name = "NMF", n = 10) {
     basis <- getBasis(x, name)
     
@@ -86,8 +98,12 @@ getTopFeatures <- function(x, name = "NMF", n = 10) {
 #' @return Reconstructed matrix (basis %*% t(coefficients))
 #' @export
 #' @examples
-#' # sce <- runNMFscape(sce, k = 10)
-#' # reconstructed <- reconstructNMF(sce)
+#' library(scuttle)
+#' sce <- mockSCE(ngenes = 100, ncells = 50)
+#' sce <- logNormCounts(sce)
+#' sce <- runNMFscape(sce, k = 3, verbose = FALSE)
+#' reconstructed <- reconstructNMF(sce)
+#' dim(reconstructed)
 reconstructNMF <- function(x, name = "NMF") {
     basis <- getBasis(x, name)
     coeffs <- getCoefficients(x, name)

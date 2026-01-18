@@ -10,8 +10,7 @@ vizUMAP(
   program = 1,
   point_size = 0.8,
   alpha = 1,
-  color_scale = "viridis",
-  title = NULL
+  color_scale = "viridis"
 )
 }
 \arguments{
@@ -26,8 +25,6 @@ vizUMAP(
 \item{alpha}{Numeric, transparency of points (default 1.0)}
 
 \item{color_scale}{Character, color scale to use: "viridis", "plasma", "inferno", "magma" (default "viridis")}
-
-\item{title}{Character, plot title (if NULL, auto-generates from program name)}
 }
 \value{
 A ggplot object

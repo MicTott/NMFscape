@@ -40,16 +40,6 @@ runNMFscape <- function(x, k, assay = "logcounts", name = "NMF",
                    subset_row = NULL, tol = 1e-5, maxit = 100,
                    L1 = c(0, 0), seed = NULL, verbose = TRUE, ...) {
     
-    # Ensure Matrix package is available and attached for RcppML
-    if (!requireNamespace("Matrix", quietly = TRUE)) {
-        stop("Package 'Matrix' is required but not available")
-    }
-    
-    # Load Matrix library if not already loaded (RcppML needs it on search path)
-    if (!"package:Matrix" %in% search()) {
-        library(Matrix, quietly = TRUE)
-    }
-    
     # Input validation
     if (!is(x, "SingleCellExperiment")) {
         stop("x must be a SingleCellExperiment or SpatialExperiment object")
@@ -73,18 +63,14 @@ runNMFscape <- function(x, k, assay = "logcounts", name = "NMF",
         mat[mat < 0] <- 0
     }
     
-    # Set seed if provided
-    if (!is.null(seed)) {
-        set.seed(seed)
-    }
-    
     # Run NMF using RcppML
+    # Note: seed parameter passed directly to RcppML::nmf
     if (verbose) {
         message("Running NMF with k=", k, " factors...")
     }
-    
-    nmf_result <- RcppML::nmf(mat, k = k, tol = tol, maxit = maxit,
-                              L1 = L1, verbose = verbose, ...)
+
+    nmf_result <- RcppML::nmf(A = mat, k = k, tol = tol, maxit = maxit,
+                              L1 = L1, seed = seed, verbose = FALSE, ...)
     
     # Extract results
     basis_matrix <- nmf_result$w  # Features x factors

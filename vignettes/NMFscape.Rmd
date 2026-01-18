@@ -1,109 +1,221 @@
 ---
-title: "Fast NMF for Single Cell and Spatial Data with NMFscape"
-author: "Your Name"
+title: "Getting Started with NMFscape"
+author: "Michael Totty"
 date: "`r Sys.Date()`"
-output: BiocStyle::html_document
+output: 
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
 vignette: >
-  %\VignetteIndexEntry{Fast NMF for Single Cell and Spatial Data with NMFscape}
+  %\VignetteIndexEntry{Getting Started with NMFscape}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 10,
+  fig.height = 5
 )
 ```
 
 # Introduction
 
-NMFscape provides fast non-negative matrix factorization (NMF) for SingleCellExperiment and SpatialExperiment objects using the high-performance RcppML backend. NMF is useful for dimensionality reduction, feature extraction, and identifying patterns in genomic data.
+NMFscape provides fast, scalable non-negative matrix factorization (NMF) for single-cell and spatial transcriptomic data. NMF decomposes gene expression data into biologically interpretable gene expression programs (also called "factors" or "metagenes") and their weighted patterns across cells.
 
-# Installation
+## What is NMF?
 
-```{r, eval=FALSE}
-# From Bioconductor (when available)
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-BiocManager::install("NMFscape")
-```
+Non-negative matrix factorization decomposes a gene expression matrix **X** (genes × cells) into two lower-rank matrices:
 
-# Quick Start
+- **W** (genes × k programs): Gene loadings - which genes contribute to each program
+- **H** (k programs × cells): Cell loadings - how much each cell uses each program
 
-```{r setup, message=FALSE}
+The key constraint is that all values in W and H are non-negative (≥0), which enforces a "parts-based" representation where programs combine additively. This is particularly suited for biological data where gene expression counts are inherently non-negative.
+
+## Why NMF for single-cell analysis?
+
+- **Gene program decomposition**: Identifies gene modules that work together in biological processes
+- **Cell type discovery**: Programs often correspond to cell type-specific signatures, cell states, or biological pathways
+- **Biologically interpretable**: Gene programs represent co-expressed gene modules which can be used downstream for functional enrichment or pathway analysis
+
+NMFscape uses RcppML for high-performance computation and integrates seamlessly with Bioconductor workflows, storing results directly in SingleCellExperiment and SpatialExperiment objects.
+
+```{r load-packages}
 library(NMFscape)
+library(Matrix)
+library(SingleCellExperiment)
 library(scuttle)
+library(scater)
+library(scran)
+library(scRNAseq)
+library(ggplot2)
+library(patchwork)
+
+set.seed(427)
 ```
 
-## Basic Usage with SingleCellExperiment
+# Basic NMF Workflow
 
-```{r}
-# Create example data
-sce <- mockSCE(ngenes = 1000, ncells = 200)
+## Load and prepare data
+
+We'll use the Zeisel brain dataset (Zeisel et al. 2015, Science) which contains ~3,000 cells from the mouse brain with diverse cell types including neurons, astrocytes, oligodendrocytes, and immune cells. We remove mitochondrial genes as they can dominate gene programs and are typically reflective of technical noise rather than biological signals of interest.
+
+```{r prepare-data}
+# Load brain dataset
+sce <- ZeiselBrainData()
+
+# Remove mitochondrial genes 
+sce <- sce[!grepl("^mt-", rownames(sce)), ]
+
+# Lognormalize counts
 sce <- logNormCounts(sce)
 
-# Run NMF with 10 factors
+# Generate PCA and UMAP for visualization (independent of NMF)
+sce <- runPCA(sce, ncomponents = 20)
+sce <- runUMAP(sce, dimred = "PCA")
+```
+
+## Run NMF
+
+Here we run NMF with k=10 programs. Choosing k is non-trivial and should be chosen with care. It is best practice to use cross-validation methods to hepl find the optimal k for each dataset (functionaity coming soon). For now we recommend setting the K between 10-50 for single-cell datasets. 
+
+```{r run-nmf}
+# Run NMF with 10 programs
 sce <- runNMFscape(sce, k = 10, verbose = FALSE)
 
-# Access results
+# NMF loadings are stored in the reducedDims slot
 nmf_coords <- reducedDim(sce, "NMF")
-dim(nmf_coords)
-
-# Get basis matrix (gene loadings)
-basis <- getBasis(sce)
-dim(basis)
-
-# Get top features for each factor
-top_genes <- getTopFeatures(sce, n = 5)
-head(top_genes, 2)
+dim(nmf_coords)  
 ```
 
-## Advanced Usage
 
-```{r}
-# Use different assay and parameters
-sce <- runNMFscape(sce, k = 15, assay = "logcounts", 
-              name = "NMF_15", L1 = c(0.01, 0.01), verbose = FALSE)
+# Visualizing NMF Results
 
-# Multiple NMF results can be stored
-reducedDimNames(sce)
+## Plot NMF programs on UMAP
+
+One key uses of NMF is the ability to find gene program associated with specific cell types and/or biological states. Cell type-specific program can easily be identified by plotting program weights within UMAP gene expression space.
+
+```{r visualize-programs, fig.width=12, fig.height=6}
+
+# Plot cell type annotations from Zeisel et al.
+p1 <- plotReducedDim(sce, dimred="UMAP", colour_by="level1class", point_size=0.8) +
+  ggtitle("Zeisel Brain Cell Types")
+
+# Plot the cell type weights of NMF Program 1
+p2 <- vizUMAP(sce, program = 1) +
+  ggtitle("NMF Program 1")
+
+# Display side by side for comparison
+p1 + p2
 ```
 
-## Consensus NMF
+**Interpretation**: We can see that Program 1 shows high weighting specifically in Pyramidal CA1 neurons, demonstrating that this program captures a gene expression signature specific to this cell type. Programs may also capture cell states (e.g., cycling cells) or biological processes (e.g., stress response) that span multiple cell types.
 
-For more robust results, use consensus NMF which runs multiple NMF iterations and combines results:
 
-```{r}
-# Run consensus NMF across a range of k values
-sce <- runConsensusNMF(sce, k_range = 8:12, n_runs = 20, verbose = FALSE)
+## Finding cell type specific programs
 
-# Get stability metrics to see optimal k selection
-stability <- getStabilityMetrics(sce)
-print(stability)
+To help identify programs associated with specific cell types, we can use dot plots to summarize program usage across annotated cell types. 
 
-# Access consensus results
-optimal_k <- getOptimalK(sce)
-geps <- getConsensusGEPs(sce)
-usage <- getGEPUsage(sce)
+```{r dot-plots, fig.width=6, fig.height=5}
 
-# Get top genes for each program
-top_genes <- getTopGEPFeatures(sce, n = 10)
-head(top_genes, 2)
+# dot plot of NMF program weights aggregated with cell types
+plotProgramDots(sce, group = "level1class")
+
 ```
 
-## Visualization
 
-```{r, eval=FALSE}
-# Plot stability metrics (requires ggplot2)
-if (requireNamespace("ggplot2", quietly = TRUE)) {
-  plotStability(sce)
-  plotGEPs(sce, programs = 1:3, n_genes = 15)
-}
+## Examine top weighted genes per program
+
+We can examine the top genes contributing to each program using a heatmap of gene weights from the basis matrix (W). This allows us to see which genes are most important for defining each program.
+
+```{r gene-weights, fig.width=4, fig.height=8}
+
+# Heatmap of top genes per program by weights
+plotProgramHeatmap(sce, n_genes = 10, cluster_rows=FALSE)
+
+
 ```
+
+
+We can also compare this to the expression of these top genes across cell types and see that the NMF programs are indeed finding highly specific marker genes of distinct cell types. 
+
+```{r gene-expression, fig.width=4, fig.height=8}
+library(pheatmap)
+
+# Get the top 10 genes per program
+top_genes <- getTopFeatures(sce, n = 10)
+
+# Create list of top 5 unique genes across all programs
+top5_genes <- unique(unlist(lapply(top_genes, function(x) x[1:5])))
+
+# Plot heatmap of top 5 genes across all cell types
+scater::plotGroupedHeatmap(sce, features = top5_genes,
+                       group = "level1class",
+                       assay = "logcounts",
+                       scale = TRUE,
+                       center = TRUE
+                   )
+
+```
+
+
+# Finding Differentially Expressed Programs
+
+## Differential Program Usage
+
+To identify which NMF programs are enriched in specific cell types, we can perform differential expression analysis treating each program as a "feature" and comparing its usage across cell types. The `FindAllDEPs()` function performs 1-vs-all comparisons for each cell type to identify programs that are significantly enriched or depleted.
+
+```{r dep-analysis}
+# Find differentially expressed programs across cell types
+deps <- FindAllDEPs(sce, cell_type_col = "level1class")
+
+# View results for pyramidal CA1 neurons
+head(deps[["pyramidal CA1"]])
+```
+
+**Interpreting the results**:
+- **fold_enrichment**: Ratio of mean program usage in this cell type vs. all others (>1 = enriched, <1 = depleted)
+- **mean_usage_in**: Average program weight in cells of this type
+- **mean_usage_out**: Average program weight in all other cells
+- **p.value**: Statistical significance from Wilcoxon test
+- **FDR**: False discovery rate adjusted p-value
+- **AUC**: Area under the ROC curve for program usage distinguishing this cell type from others.
+
+
+## Visualizing Differential Program Usage 
+
+We can visualize these results using volcano plots, which show the relationship between fold enrichment and statistical significance:
+
+```{r dep-volcano, fig.width=10, fig.height=8}
+# Volcano plots for all cell types
+plotDEPsVolcano(deps, fold_threshold = 1.5, pval_threshold = 0.05)
+```
+
+
+We can also summarize differential program usage across all cell types using a heatmap to make visualize compact and easy to interpret. 
+
+```{r dep-heatmap, fig.width=3, fig.height=4}
+# Heatmap of log2 fold change with stars for significant enrichments
+plotDEPsHeatmap(deps, logfc_threshold = 2, star_size=14)
+```
+
+**Interpretation**: This heatmap displays log2 fold change values with a divergent color scale (blue = depleted, white = no change, red = enriched). Stars (*) mark programs with log2FC > 2, by default, highlighting the most strongly enriched programs for each cell type. This makes it easy to see to identify cell type-specific programs at a glance.
+
+
+## Downstream analyses
+NMF programs can be used for a variety of downstream analyses including (vingettes coming soon):
+
+- **Integration with spatial data**: Map NMF programs onto spatial transcriptomics data to predict the location of distinct cell type. 
+- **Identification of disease-associated gene programs**: Compare NMF programs between healthy and diseased samples (or case vs control) to identify programs associated with disease states.
+- **Functional enrichment**: Perform GO or pathway enrichment analysis on top genes from each program to identify biological processes represented by each program. This is particularly useful for case-control experiments or disease studies.
+
+
 
 # Session Information
 
-```{r}
+```{r session-info}
 sessionInfo()
 ```

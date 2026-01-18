@@ -38,11 +38,12 @@ expressed in each cell type compared to all other cell types. Treats each
 NMF program as a "gene" and performs 1-vs-all comparisons.
 }
 \examples{
-# Run NMF and find differentially expressed programs
-sce <- runNMFscape(sce, k = 8)
-deps <- FindAllDEPs(sce, "cell_type")
-
-# View results for first cell type
+library(scuttle)
+sce <- mockSCE(ngenes = 100, ncells = 50)
+sce <- logNormCounts(sce)
+sce <- runNMFscape(sce, k = 3, verbose = FALSE)
+sce$celltype <- sample(c("A", "B"), ncol(sce), replace = TRUE)
+deps <- FindAllDEPs(sce, cell_type_col = "celltype")
 head(deps[[1]])
 
 }

@@ -1,6 +1,6 @@
 test_that("runNMFscape works with SingleCellExperiment", {
     skip_if_not_installed("scuttle")
-    
+
     library(scuttle)
     sce <- mockSCE(ngenes = 100, ncells = 50)
     sce <- logNormCounts(sce)

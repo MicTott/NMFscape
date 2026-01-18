@@ -9,7 +9,6 @@
 #' @param point_size Numeric, size of points (default 0.8)
 #' @param alpha Numeric, transparency of points (default 1.0)
 #' @param color_scale Character, color scale to use: "viridis", "plasma", "inferno", "magma" (default "viridis")
-#' @param title Character, plot title (if NULL, auto-generates from program name)
 #'
 #' @return A ggplot object
 #' @export
@@ -27,10 +26,15 @@
 #' # Plot specific program by name with custom styling
 #' vizUMAP(sce, program = "NMF_4", color_scale = "plasma", point_size = 1.2)
 vizUMAP <- function(x, nmf_name = "NMF", program = 1, point_size = 0.8, 
-                    alpha = 1.0, color_scale = "viridis", title = NULL) {
+                    alpha = 1.0, color_scale = "viridis") {
     
     # Call vizDimRed with UMAP-specific settings
-    vizDimRed(x = x, dimred = "UMAP", nmf_name = nmf_name, program = program,
-              point_size = point_size, alpha = alpha, color_scale = color_scale,
-              title = title, dims = c(1, 2))
+    vizDimRed(x = x, 
+              dimred = "UMAP", 
+              nmf_name = nmf_name, 
+              program = program,
+              point_size = point_size, 
+              alpha = alpha, 
+              color_scale = color_scale,
+              dims = c(1, 2))
 }

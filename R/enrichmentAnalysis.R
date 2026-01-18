@@ -15,11 +15,12 @@
 #' @return List of DataFrames (one per cell type) with differential expression statistics
 #' @export
 #' @examples
-#' # Run NMF and find differentially expressed programs
-#' sce <- runNMFscape(sce, k = 8)
-#' deps <- FindAllDEPs(sce, "cell_type")
-#' 
-#' # View results for first cell type
+#' library(scuttle)
+#' sce <- mockSCE(ngenes = 100, ncells = 50)
+#' sce <- logNormCounts(sce)
+#' sce <- runNMFscape(sce, k = 3, verbose = FALSE)
+#' sce$celltype <- sample(c("A", "B"), ncol(sce), replace = TRUE)
+#' deps <- FindAllDEPs(sce, cell_type_col = "celltype")
 #' head(deps[[1]])
 #'
 #' @importFrom scran findMarkers
@@ -128,11 +129,16 @@ FindAllDEPs <- function(x, cell_type_col, nmf_name = "NMF",
 #' @return A ggplot object
 #' @export
 #' @examples
-#' deps <- FindAllDEPs(sce, "cell_type") 
+#' library(scuttle)
+#' sce <- mockSCE(ngenes = 100, ncells = 50)
+#' sce <- logNormCounts(sce)
+#' sce <- runNMFscape(sce, k = 3, verbose = FALSE)
+#' sce$celltype <- sample(c("A", "B"), ncol(sce), replace = TRUE)
+#' deps <- FindAllDEPs(sce, cell_type_col = "celltype")
 #' plotDEPsVolcano(deps)
 #'
 #' @importFrom ggplot2 ggplot aes geom_point geom_hline geom_vline
-#' @importFrom ggplot2 scale_color_manual facet_wrap theme_minimal labs
+#' @importFrom ggplot2 scale_color_manual facet_wrap theme_minimal labs theme_bw
 #' @importFrom ggplot2 theme element_text
 plotDEPsVolcano <- function(deps_results, cell_types = NULL,
                            fold_threshold = 1.5, pval_threshold = 0.05,
@@ -208,7 +214,7 @@ plotDEPsVolcano <- function(deps_results, cell_types = NULL,
                                      "Enriched" = "red3", 
                                      "Depleted" = "blue3")) +
         facet_wrap(~cell_type, ncol = ncol, scales = "free") +
-        theme_minimal() +
+        theme_bw() +
         labs(x = "Log2 Fold Enrichment", 
              y = "-Log10 P-value",
              title = "Differentially Expressed Programs Across Cell Types",
@@ -229,79 +235,3 @@ plotDEPsVolcano <- function(deps_results, cell_types = NULL,
     return(p)
 }
 
-
-#' Visualize Differentially Expressed Programs with dot plot
-#'
-#' Creates a dot plot showing fold enrichment and significance of differentially
-#' expressed NMF programs across cell types, similar to gene expression dot plots.
-#'
-#' @param deps_results List of DataFrames from FindAllDEPs()
-#' @param fold_threshold Numeric, minimum fold enrichment to display (default 1.2)
-#' @param pval_threshold Numeric, maximum p-value to display (default 0.05)
-#' @param top_programs Integer, maximum number of programs to show (default 20)
-#'
-#' @return A ggplot object  
-#' @export
-#' @examples
-#' deps <- FindAllDEPs(sce, "cell_type")
-#' plotDEPsDots(deps)
-#'
-#' @importFrom ggplot2 ggplot aes geom_point scale_size_continuous
-#' @importFrom ggplot2 scale_color_viridis_c theme_minimal labs theme
-#' @importFrom ggplot2 element_text
-plotDEPsDots <- function(deps_results, fold_threshold = 1.2, 
-                        pval_threshold = 0.05, top_programs = 20) {
-    
-    # Combine all results and filter for significant enrichments
-    plot_data <- do.call(rbind, lapply(names(deps_results), function(ct) {
-        deps_df <- deps_results[[ct]]
-        
-        # Create clean data frame
-        df <- data.frame(
-            cell_type = ct,
-            program = rownames(deps_df),
-            fold_enrichment = deps_df$fold_enrichment,
-            p.value = deps_df$p.value,
-            FDR = deps_df$FDR,
-            stringsAsFactors = FALSE
-        )
-        
-        # Filter for significant enrichments
-        return(df[df$fold_enrichment >= fold_threshold & df$p.value <= pval_threshold, ])
-    }))
-    
-    if (nrow(plot_data) == 0) {
-        stop("No significant enrichments found with current thresholds. ",
-             "Try lowering fold_threshold or increasing pval_threshold.")
-    }
-    
-    # Select top programs by significance
-    program_importance <- aggregate((-log10(plot_data$p.value)), 
-                                   by = list(plot_data$program), 
-                                   FUN = max)
-    names(program_importance) <- c("program", "max_neg_log10_pval")
-    program_importance <- program_importance[order(-program_importance$max_neg_log10_pval), ]
-    
-    if (nrow(program_importance) > top_programs) {
-        keep_programs <- head(program_importance$program, top_programs)
-        plot_data <- plot_data[plot_data$program %in% keep_programs, ]
-    }
-    
-    # Add negative log10 p-value for color mapping
-    plot_data$neg_log10_pval <- -log10(plot_data$p.value)
-    
-    # Create dot plot
-    p <- ggplot(plot_data, aes(x = cell_type, y = program)) +
-        geom_point(aes(size = fold_enrichment, color = neg_log10_pval)) +
-        scale_size_continuous(name = "Fold\nEnrichment", range = c(1, 8),
-                             breaks = c(1.5, 2, 3, 5), labels = c("1.5", "2", "3", "5+")) +
-        scale_color_viridis_c(name = "-Log10\nP-value", option = "plasma") +
-        theme_minimal() +
-        labs(x = "Cell Type", y = "NMF Program",
-             title = "Differentially Expressed Programs Across Cell Types") +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1),
-              plot.title = element_text(size = 14, hjust = 0.5),
-              legend.position = "right")
-    
-    return(p)
-}

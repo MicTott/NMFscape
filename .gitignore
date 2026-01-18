@@ -1,3 +1,6 @@
+# Claude
+CLAUDE.md
+
 # R package development
 .Rproj.user
 .Rhistory
@@ -12,6 +15,7 @@
 
 # R check artifacts
 *.Rcheck/
+*.BiocCheck/
 00check.log
 
 # Documentation artifacts
@@ -40,3 +44,6 @@ plots/
 inst/doc/
 vignettes/*.html
 vignettes/*.pdf
+
+# Claude
+CLAUDE.md

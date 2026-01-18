@@ -18,6 +18,10 @@ Reconstructed matrix (basis %*% t(coefficients))
 Reconstruct original matrix from NMF factors
 }
 \examples{
-# sce <- runNMFscape(sce, k = 10)
-# reconstructed <- reconstructNMF(sce)
+library(scuttle)
+sce <- mockSCE(ngenes = 100, ncells = 50)
+sce <- logNormCounts(sce)
+sce <- runNMFscape(sce, k = 3, verbose = FALSE)
+reconstructed <- reconstructNMF(sce)
+dim(reconstructed)
 }

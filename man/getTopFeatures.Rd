@@ -20,6 +20,10 @@ List of character vectors, each containing top features for a factor
 Calculate feature loadings (which genes contribute most to each factor)
 }
 \examples{
-# sce <- runNMFscape(sce, k = 10)
-# top_genes <- getTopFeatures(sce, n = 20)
+library(scuttle)
+sce <- mockSCE(ngenes = 100, ncells = 50)
+sce <- logNormCounts(sce)
+sce <- runNMFscape(sce, k = 3, verbose = FALSE)
+top_genes <- getTopFeatures(sce, n = 10)
+head(top_genes[[1]])
 }

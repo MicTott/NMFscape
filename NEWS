@@ -1,0 +1,13 @@
+Changes in version 0.99.0 (2025-09-09)
+========================================
+
+INITIAL RELEASE
+
+* First Bioconductor submission of NMFscape
+* Fast NMF implementation using RcppML backend for SingleCellExperiment objects
+* Core functions for running NMF analysis on single-cell data
+* Accessor functions: getBasis(), getCoefficients(), getTopFeatures(), reconstructNMF()
+* Visualization functions: vizUMAP(), vizDimRed(), plotProgramHeatmap(), plotProgramDots()
+* Differential program analysis: FindAllDEPs(), plotDEPsVolcano(), plotDEPsHeatmap()
+* Support for identifying cell type-specific gene programs
+* Integration with Bioconductor SingleCellExperiment framework

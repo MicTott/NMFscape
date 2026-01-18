@@ -12,7 +12,6 @@ vizDimRed(
   point_size = 0.8,
   alpha = 1,
   color_scale = "viridis",
-  title = NULL,
   dims = c(1, 2)
 )
 }
@@ -30,8 +29,6 @@ vizDimRed(
 \item{alpha}{Numeric, transparency of points (default 1.0)}
 
 \item{color_scale}{Character, color scale to use: "viridis", "plasma", "inferno", "magma", or custom (default "viridis")}
-
-\item{title}{Character, plot title (if NULL, auto-generates from program name)}
 
 \item{dims}{Integer vector of length 2, which dimensions to plot (default c(1,2))}
 }

@@ -10,7 +10,6 @@
 #' @param point_size Numeric, size of points (default 0.8)
 #' @param alpha Numeric, transparency of points (default 1.0)
 #' @param color_scale Character, color scale to use: "viridis", "plasma", "inferno", "magma", or custom (default "viridis")
-#' @param title Character, plot title (if NULL, auto-generates from program name)
 #' @param dims Integer vector of length 2, which dimensions to plot (default c(1,2))
 #'
 #' @return A ggplot object
@@ -38,7 +37,7 @@
 #' @importFrom SingleCellExperiment reducedDim reducedDimNames
 vizDimRed <- function(x, dimred = "UMAP", nmf_name = "NMF", program = 1,
                       point_size = 0.8, alpha = 1.0, color_scale = "viridis",
-                      title = NULL, dims = c(1, 2)) {
+                      dims = c(1, 2)) {
     
     # Input validation
     if (!is(x, "SingleCellExperiment")) {
@@ -104,8 +103,8 @@ vizDimRed <- function(x, dimred = "UMAP", nmf_name = "NMF", program = 1,
     # Create base plot
     p <- ggplot(df, aes(x = x, y = y, color = program_usage)) +
         geom_point(size = point_size, alpha = alpha) +
-        theme_minimal() +
-        labs(x = x_label, y = y_label, color = "Usage")
+        theme_classic() +
+        labs(x = x_label, y = y_label, color = "Weights")
     
     # Apply color scale
     if (color_scale == "viridis") {
@@ -120,12 +119,6 @@ vizDimRed <- function(x, dimred = "UMAP", nmf_name = "NMF", program = 1,
         # Assume custom color scale - user can modify the returned plot
         p <- p + scale_color_viridis_c()
     }
-    
-    # Add title
-    if (is.null(title)) {
-        title <- paste("NMF Program:", program_name)
-    }
-    p <- p + ggtitle(title)
     
     return(p)
 }
