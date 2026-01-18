@@ -4,7 +4,7 @@ pkgdown_sha: ~
 articles:
   getting-started: getting-started.html
   NMFscape: NMFscape.html
-last_built: 2026-01-18T16:55Z
+last_built: 2026-01-18T17:28Z
 urls:
   reference: https://mictott.github.io/NMFscape/reference
   article: https://mictott.github.io/NMFscape/articles
