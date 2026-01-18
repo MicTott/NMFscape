@@ -6,6 +6,8 @@
 \alias{NMFscape-package}
 \title{NMFscape: Fast Non-negative Matrix Factorization for Single Cell and Spatial Data}
 \description{
+\if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
+
 This package provides high-performance non-negative matrix factorization (NMF) methods for SingleCellExperiment and SpatialExperiment objects using the RcppML backend. It enables efficient dimensionality reduction, feature extraction, and pattern discovery in single-cell and spatial genomics data, with seamless integration into Bioconductor workflows.
 }
 \seealso{
@@ -18,7 +20,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Michael Totty \email{mictott@gmail.com}
+\strong{Maintainer}: Michael Totty \email{mictott@gmail.com} (\href{https://orcid.org/0000-0002-9292-8556}{ORCID})
 
 }
 \keyword{internal}

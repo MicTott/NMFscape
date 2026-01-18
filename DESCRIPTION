@@ -4,8 +4,9 @@ Title: Fast Non-negative Matrix Factorization for Single Cell and Spatial Data
 Version: 0.99.0
 Date: 2025-09-09
 Authors@R: c(
-    person("Michael", "Totty", email = "mictott@gmail.com", role = c("aut", "cre"))
-    )
+    person("Michael", "Totty", email = "mictott@gmail.com", 
+    role = c("aut", "cre"), comment = c(ORCID = "0000-0002-9292-8556")
+    ))
 Description: This package provides high-performance non-negative matrix 
     factorization (NMF) methods for SingleCellExperiment and SpatialExperiment 
     objects using the RcppML backend. It enables efficient dimensionality 
@@ -14,9 +15,10 @@ Description: This package provides high-performance non-negative matrix
 License: Artistic-2.0
 Encoding: UTF-8
 Depends:
-    R (>= 4.4.0),
+    R (>= 4.5.0),
     BiocGenerics,
-    SingleCellExperiment
+    SingleCellExperiment,
+    SpatialExperiment,
 Imports:
     methods,
     stats,
@@ -38,7 +40,6 @@ Suggests:
     scater,
     uwot,
     ggrepel,
-    SpatialExperiment,
     scRNAseq,
     patchwork,
     pheatmap
@@ -49,4 +50,4 @@ biocViews: NonnegativeMatrixFactorization,
 BugReports: https://github.com/MicTott/NMFscape/issues
 URL: https://github.com/MicTott/NMFscape, https://mictott.github.io/NMFscape/
 SystemRequirements: C++14
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
