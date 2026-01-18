@@ -112,7 +112,6 @@ p2 <- vizUMAP(sce, program = 1) +
 p1 + p2
 ```
 
-**Interpretation**: We can see that Program 1 shows high weighting specifically in Pyramidal CA1 neurons, demonstrating that this program captures a gene expression signature specific to this cell type. Programs may also capture cell states (e.g., cycling cells) or biological processes (e.g., stress response) that span multiple cell types.
 
 
 ## Finding cell type specific programs
@@ -176,18 +175,10 @@ deps <- FindAllDEPs(sce, cell_type_col = "level1class")
 head(deps[["pyramidal CA1"]])
 ```
 
-**Interpreting the results**:
-- **fold_enrichment**: Ratio of mean program usage in this cell type vs. all others (>1 = enriched, <1 = depleted)
-- **mean_usage_in**: Average program weight in cells of this type
-- **mean_usage_out**: Average program weight in all other cells
-- **p.value**: Statistical significance from Wilcoxon test
-- **FDR**: False discovery rate adjusted p-value
-- **AUC**: Area under the ROC curve for program usage distinguishing this cell type from others.
-
 
 ## Visualizing Differential Program Usage 
 
-We can visualize these results using volcano plots, which show the relationship between fold enrichment and statistical significance:
+We can visualize these results using volcano plots via the `plotDEPsVolcano` function, which show the relationship between fold enrichment and statistical significance. It should be noted that the p-values here are inflated and should be not over-interpreted. 
 
 ```{r dep-volcano, fig.width=10, fig.height=8}
 # Volcano plots for all cell types
@@ -195,14 +186,12 @@ plotDEPsVolcano(deps, fold_threshold = 1.5, pval_threshold = 0.05)
 ```
 
 
-We can also summarize differential program usage across all cell types using a heatmap to make visualize compact and easy to interpret. 
+We can also summarize differential program usage across all cell types using a heatmap via the `plotDEPsHeatmap` function to make visualization easy. We can set the `logFC_threshold` parameter (2 by default) to highlight programs with strong cell type-specificity.
 
 ```{r dep-heatmap, fig.width=3, fig.height=4}
 # Heatmap of log2 fold change with stars for significant enrichments
 plotDEPsHeatmap(deps, logfc_threshold = 2, star_size=14)
 ```
-
-**Interpretation**: This heatmap displays log2 fold change values with a divergent color scale (blue = depleted, white = no change, red = enriched). Stars (*) mark programs with log2FC > 2, by default, highlighting the most strongly enriched programs for each cell type. This makes it easy to see to identify cell type-specific programs at a glance.
 
 
 ## Downstream analyses
