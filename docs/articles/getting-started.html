@@ -264,12 +264,6 @@ gene expression space.</p>
 <span><span class="co"># Display side by side for comparison</span></span>
 <span><span class="va">p1</span> <span class="op">+</span> <span class="va">p2</span></span></code></pre></div>
 <p><img src="getting-started_files/figure-html/visualize-programs-1.png" alt="" width="1152"></p>
-<p><strong>Interpretation</strong>: We can see that Program 1 shows high
-weighting specifically in Pyramidal CA1 neurons, demonstrating that this
-program captures a gene expression signature specific to this cell type.
-Programs may also capture cell states (e.g., cycling cells) or
-biological processes (e.g., stress response) that span multiple cell
-types.</p>
 </div>
 <div class="section level3">
 <h3 id="finding-cell-type-specific-programs">Finding cell type specific programs<a class="anchor" aria-label="anchor" href="#finding-cell-type-specific-programs"></a>
@@ -359,38 +353,28 @@ depleted.</p>
 <span><span class="co">#&gt; NMF_8       0.55753369      0.447882            0.1196615       0.43640518</span></span>
 <span><span class="co">#&gt; NMF_5       0.00203812      0.632832            0.6523650       0.45692906</span></span>
 <span><span class="co">#&gt; NMF_7       0.46045132      0.254412            0.3767156       0.43647858</span></span></code></pre></div>
-<p><strong>Interpreting the results</strong>: -
-<strong>fold_enrichment</strong>: Ratio of mean program usage in this
-cell type vs. all others (&gt;1 = enriched, &lt;1 = depleted) -
-<strong>mean_usage_in</strong>: Average program weight in cells of this
-type - <strong>mean_usage_out</strong>: Average program weight in all
-other cells - <strong>p.value</strong>: Statistical significance from
-Wilcoxon test - <strong>FDR</strong>: False discovery rate adjusted
-p-value - <strong>AUC</strong>: Area under the ROC curve for program
-usage distinguishing this cell type from others.</p>
 </div>
 <div class="section level3">
 <h3 id="visualizing-differential-program-usage">Visualizing Differential Program Usage<a class="anchor" aria-label="anchor" href="#visualizing-differential-program-usage"></a>
 </h3>
-<p>We can visualize these results using volcano plots, which show the
-relationship between fold enrichment and statistical significance:</p>
+<p>We can visualize these results using volcano plots via the
+<code>plotDEPsVolcano</code> function, which show the relationship
+between fold enrichment and statistical significance. It should be noted
+that the p-values here are inflated and should be not
+over-interpreted.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Volcano plots for all cell types</span></span>
 <span><span class="fu"><a href="../reference/plotDEPsVolcano.html">plotDEPsVolcano</a></span><span class="op">(</span><span class="va">deps</span>, fold_threshold <span class="op">=</span> <span class="fl">1.5</span>, pval_threshold <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span></code></pre></div>
 <p><img src="getting-started_files/figure-html/dep-volcano-1.png" alt="" width="960"></p>
 <p>We can also summarize differential program usage across all cell
-types using a heatmap to make visualize compact and easy to
-interpret.</p>
+types using a heatmap via the <code>plotDEPsHeatmap</code> function to
+make visualization easy. We can set the <code>logFC_threshold</code>
+parameter (2 by default) to highlight programs with strong cell
+type-specificity.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Heatmap of log2 fold change with stars for significant enrichments</span></span>
 <span><span class="fu"><a href="../reference/plotDEPsHeatmap.html">plotDEPsHeatmap</a></span><span class="op">(</span><span class="va">deps</span>, logfc_threshold <span class="op">=</span> <span class="fl">2</span>, star_size<span class="op">=</span><span class="fl">14</span><span class="op">)</span></span></code></pre></div>
 <p><img src="getting-started_files/figure-html/dep-heatmap-1.png" alt="" width="288"></p>
-<p><strong>Interpretation</strong>: This heatmap displays log2 fold
-change values with a divergent color scale (blue = depleted, white = no
-change, red = enriched). Stars (*) mark programs with log2FC &gt; 2, by
-default, highlighting the most strongly enriched programs for each cell
-type. This makes it easy to see to identify cell type-specific programs
-at a glance.</p>
 </div>
 <div class="section level3">
 <h3 id="downstream-analyses">Downstream analyses<a class="anchor" aria-label="anchor" href="#downstream-analyses"></a>
