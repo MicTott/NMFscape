@@ -135,6 +135,8 @@ We can examine the top genes contributing to each program using a heatmap of gen
 # Heatmap of top genes per program by weights
 plotProgramHeatmap(sce, n_genes = 10, cluster_rows=FALSE)
 
+# Plot only specific programs of interest
+plotProgramHeatmap(sce, programs = c(1, 3, 6, 8), n_genes = 10, cluster_rows=FALSE)
 
 ```
 

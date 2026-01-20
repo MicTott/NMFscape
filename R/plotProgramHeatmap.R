@@ -6,6 +6,8 @@
 #'
 #' @param x A SingleCellExperiment object with NMF results
 #' @param nmf_name Character, name of NMF result to use (default "NMF")
+#' @param programs Integer vector, specific programs to plot (default NULL for all).
+#'   Can specify program indices (e.g., c(1, 3, 5)) or names (e.g., c("GEP_1", "GEP_3"))
 #' @param n_genes Integer, number of top genes to show per program (default 10)
 #' @param make_unique Logical, whether to select unique top genes per program (default TRUE).
 #'   When TRUE, genes are iteratively assigned to programs based on highest weight,
@@ -38,7 +40,10 @@
 #' # Custom colors
 #' plotProgramHeatmap(sce, n_genes = 8,
 #'                    color_palette = c("navy", "white", "darkred"))
-plotProgramHeatmap <- function(x, nmf_name = "NMF", n_genes = 10, make_unique = TRUE,
+#'
+#' # Plot only specific programs
+#' plotProgramHeatmap(sce, programs = c(1, 3, 5), n_genes = 10)
+plotProgramHeatmap <- function(x, nmf_name = "NMF", programs = NULL, n_genes = 10, make_unique = TRUE,
                                scale_rows = TRUE, cluster_rows = TRUE,
                                cluster_cols = FALSE, show_rownames = TRUE,
                                color_palette = c("dodgerblue", "white", "red"), ...) {
@@ -58,6 +63,26 @@ plotProgramHeatmap <- function(x, nmf_name = "NMF", n_genes = 10, make_unique = 
 
     basis <- metadata(x)[[basis_name]]
     k <- ncol(basis)
+
+    # Subset programs if requested
+    if (!is.null(programs)) {
+        # Handle both numeric indices and character names
+        if (is.numeric(programs)) {
+            if (any(programs < 1 | programs > k)) {
+                stop("Program indices must be between 1 and ", k)
+            }
+            basis <- basis[, programs, drop = FALSE]
+        } else if (is.character(programs)) {
+            if (!all(programs %in% colnames(basis))) {
+                missing <- setdiff(programs, colnames(basis))
+                stop("Programs not found: ", paste(missing, collapse = ", "))
+            }
+            basis <- basis[, programs, drop = FALSE]
+        } else {
+            stop("'programs' must be numeric or character vector")
+        }
+        k <- ncol(basis)
+    }
 
     if (make_unique) {
         # Select unique top genes per program
@@ -86,7 +111,13 @@ plotProgramHeatmap <- function(x, nmf_name = "NMF", n_genes = 10, make_unique = 
         top_genes_list <- genes_per_program
     } else {
         # Get top genes for each program (allows overlap)
-        top_genes_list <- getTopFeatures(x, name = nmf_name, n = n_genes)
+        # Use the subsetted basis matrix
+        top_genes_list <- lapply(seq_len(k), function(prog_idx) {
+            prog_weights <- basis[, prog_idx]
+            top_idx <- order(prog_weights, decreasing = TRUE)[seq_len(n_genes)]
+            rownames(basis)[top_idx]
+        })
+        names(top_genes_list) <- colnames(basis)
 
         # Create set of top genes across all programs
         all_top_genes <- unique(unlist(top_genes_list))

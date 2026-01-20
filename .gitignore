@@ -45,5 +45,10 @@ inst/doc/
 vignettes/*.html
 vignettes/*.pdf
 
+# Data files
+*.rds
+*.RData
+input/
+
 # Claude
 CLAUDE.md
