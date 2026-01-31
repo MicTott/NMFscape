@@ -7,6 +7,7 @@
 plotProgramHeatmap(
   x,
   nmf_name = "NMF",
+  programs = NULL,
   n_genes = 10,
   make_unique = TRUE,
   scale_rows = TRUE,
@@ -21,6 +22,9 @@ plotProgramHeatmap(
 \item{x}{A SingleCellExperiment object with NMF results}
 
 \item{nmf_name}{Character, name of NMF result to use (default "NMF")}
+
+\item{programs}{Integer vector, specific programs to plot (default NULL for all).
+Can specify program indices (e.g., c(1, 3, 5)) or names (e.g., c("GEP_1", "GEP_3"))}
 
 \item{n_genes}{Integer, number of top genes to show per program (default 10)}
 
@@ -67,4 +71,7 @@ plotProgramHeatmap(sce, n_genes = 5, scale_rows = FALSE)
 # Custom colors
 plotProgramHeatmap(sce, n_genes = 8,
                    color_palette = c("navy", "white", "darkred"))
+
+# Plot only specific programs
+plotProgramHeatmap(sce, programs = c(1, 3, 5), n_genes = 10)
 }

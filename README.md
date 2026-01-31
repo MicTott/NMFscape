@@ -31,7 +31,7 @@ library(NMFscape)
 
 ## Requirements
 
-- R (>= 4.3.0)
+- R (>= 4.5.0)
 - Bioconductor packages: SingleCellExperiment, SummarizedExperiment
 - RcppML for fast NMF computation (CRAN v0.3.7)
 - ggplot2 for visualization (suggested)

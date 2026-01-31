@@ -169,6 +169,26 @@ scater::plotGroupedHeatmap(sce, features = top5_genes,
 
 To identify which NMF programs are enriched in specific cell types, we can perform differential expression analysis treating each program as a "feature" and comparing its usage across cell types. The `FindAllDEPs()` function performs 1-vs-all comparisons for each cell type to identify programs that are significantly enriched or depleted.
 
+
+```{r pseudodep-analysis}
+
+devtools::load_all()
+library(Seurat)
+library(here)
+
+obj <- readRDS(here("input/GSE212415_seurat.rds"))
+sce <- as.SingleCellExperiment(obj)
+
+sce <- runNMFscape(sce, k = 50, verbose = FALSE)
+
+results <- FindDEPs_pseudobulk(sce, 
+    sample_col = "Sample", 
+    trait_col = "")
+results
+
+
+```
+
 ```{r dep-analysis}
 # Find differentially expressed programs across cell types
 deps <- FindAllDEPs(sce, cell_type_col = "level1class")
