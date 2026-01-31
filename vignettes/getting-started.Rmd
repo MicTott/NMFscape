@@ -171,8 +171,6 @@ To identify which NMF programs are enriched in specific cell types, we can perfo
 
 
 ```{r pseudodep-analysis}
-
-devtools::load_all()
 library(Seurat)
 library(here)
 
