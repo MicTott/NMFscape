@@ -1,0 +1,158 @@
+---
+title: "Multi-Modal NMF Analysis"
+author: "Michael Totty"
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{Multi-Modal NMF Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 10,
+  fig.height = 6,
+  eval = FALSE
+)
+```
+
+*Note: This vignette contains code that downloads datasets and runs
+computationally intensive analyses. Set `eval = TRUE` or run chunks
+interactively to execute.*
+
+# Introduction
+
+Multi-modal single-cell assays (10x Multiome, CITE-seq, SHARE-seq) measure multiple data types from the same cells. NMFscape's `runMultiModalNMF()` performs joint NMF across modalities, learning a **shared cell embedding** while allowing each modality to have its own **feature loadings**. This finds programs that are consistent across data types.
+
+This vignette demonstrates the approach using simulated multi-modal data from the Zeisel brain dataset. In practice, you would use real multiome data (e.g., RNA + ATAC from 10x Multiome).
+
+```{r load-packages, message=FALSE}
+library(NMFscape)
+library(SingleCellExperiment)
+library(scuttle)
+library(scater)
+library(scRNAseq)
+library(ggplot2)
+
+set.seed(427)
+```
+
+# Setting Up Multi-Modal Data
+
+We simulate a second modality by selecting a subset of genes and adding noise, stored as an `altExp` in the SCE. In real data, this would be chromatin accessibility peaks, surface protein levels, etc.
+
+```{r prepare-data}
+sce <- ZeiselBrainData()
+sce <- sce[!grepl("^mt-", rownames(sce)), ]
+sce <- logNormCounts(sce)
+sce <- runPCA(sce, ncomponents = 20)
+sce <- runUMAP(sce, dimred = "PCA")
+
+# Simulate a second modality (e.g., "ATAC-like")
+# Use a random subset of genes with added noise
+set.seed(123)
+atac_genes <- sample(rownames(sce), 500)
+atac_mat <- as.matrix(assay(sce, "logcounts")[atac_genes, ])
+atac_mat <- atac_mat + abs(matrix(rnorm(length(atac_mat), sd = 0.5),
+                                  nrow = nrow(atac_mat)))
+
+atac_sce <- SingleCellExperiment(list(counts = atac_mat))
+rownames(atac_sce) <- paste0("peak_", seq_len(nrow(atac_mat)))
+colnames(atac_sce) <- colnames(sce)
+altExp(sce, "ATAC") <- atac_sce
+```
+
+The SCE now has two modalities:
+
+- **Main assay** ("logcounts"): the full gene set
+- **altExp "ATAC"**: 500 simulated peaks
+
+Both share the same cells.
+
+# Running Multi-Modal NMF
+
+`runMultiModalNMF()` accepts modalities via the `alt_exps` parameter. Use `"main"` to refer to the primary SCE assay:
+
+```{r run-multimodal}
+sce <- runMultiModalNMF(sce, k = 8,
+                        alt_exps = c("main", "ATAC"),
+                        main_assay = "logcounts",
+                        alt_assay = "counts",
+                        modality_names = c("RNA", "ATAC"),
+                        verbose = FALSE)
+```
+
+# Shared Cell Embedding
+
+The shared H matrix captures cell identity using information from both modalities:
+
+```{r shared-embedding, fig.width=12, fig.height=5}
+p1 <- plotReducedDim(sce, dimred = "UMAP", colour_by = "level1class",
+                     point_size = 0.8) +
+    ggtitle("Cell Types (UMAP)")
+
+# Also run single-modality NMF for comparison
+sce <- runNMFscape(sce, k = 8, name = "NMF_RNA", verbose = FALSE)
+
+p1
+```
+
+# Per-Modality Feature Loadings
+
+Each modality gets its own basis matrix. Use the `modality` parameter in `getBasis()`:
+
+```{r modality-basis}
+rna_basis <- getBasis(sce, "MultiNMF", modality = "RNA")
+cat("RNA basis:", dim(rna_basis), "\n")
+
+atac_basis <- getBasis(sce, "MultiNMF", modality = "ATAC")
+cat("ATAC basis:", dim(atac_basis), "\n")
+```
+
+## Top features per modality
+
+```{r top-features}
+# Top RNA genes per program
+top_rna <- getTopFeatures(sce, name = "MultiNMF", n = 5, modality = "RNA")
+cat("Top RNA genes for Program 1:\n")
+top_rna[[1]]
+
+# Top peaks per program
+top_atac <- getTopFeatures(sce, name = "MultiNMF", n = 5, modality = "ATAC")
+cat("\nTop peaks for Program 1:\n")
+top_atac[[1]]
+```
+
+## Program usage across cell types
+
+The shared embedding can be visualized the same way as standard NMF:
+
+```{r dotplot, fig.width=6, fig.height=5}
+plotProgramDots(sce, group = "level1class", nmf_name = "MultiNMF")
+```
+
+# When to Use Multi-Modal NMF
+
+Real use cases for `runMultiModalNMF()`:
+
+- **10x Multiome**: Joint RNA + ATAC-seq from the same nuclei. Store ATAC peaks as `altExp`.
+- **CITE-seq**: RNA + surface protein (ADT). Protein panel as `altExp`.
+- **SHARE-seq**: RNA + ATAC with combinatorial indexing.
+- **Spatial + scRNA-seq**: When cells are matched across modalities.
+
+The key advantage over running NMF separately on each modality is that the shared embedding enforces consistency --- programs must explain variation in *both* data types, filtering out modality-specific technical noise.
+
+**Note:** This vignette used simulated data for illustration. With real multiome data, the multi-modal embedding typically outperforms single-modality NMF for cell type separation and reveals regulatory relationships between gene expression and chromatin state.
+
+# Session Information
+
+```{r session-info, eval = TRUE}
+sessionInfo()
+```

@@ -12,10 +12,12 @@ reconstructNMF(x, name = "NMF")
 \item{name}{Character, name of the NMF result to use (default "NMF")}
 }
 \value{
-Reconstructed matrix (basis %*% t(coefficients))
+Reconstructed matrix (features x cells)
 }
 \description{
-Reconstruct original matrix from NMF factors
+Uses the raw model (W * diag(d) * H) when available for exact reconstruction,
+otherwise falls back to basis \%*\% t(coefficients) which is correct when
+d was absorbed.
 }
 \examples{
 library(scuttle)

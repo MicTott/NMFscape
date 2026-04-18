@@ -1,0 +1,171 @@
+---
+title: "Choosing k: Rank Selection and Diagnostics"
+author: "Michael Totty"
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{Choosing k: Rank Selection and Diagnostics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 8,
+  fig.height = 5,
+  eval = FALSE
+)
+```
+
+*Note: This vignette contains code that downloads datasets and runs
+computationally intensive analyses. Set `eval = TRUE` or run chunks
+interactively to execute.*
+
+# Introduction
+
+The number of NMF programs (k) is the most important parameter in any NMF analysis. Choosing k too low merges distinct biological programs; choosing k too high splits coherent programs into noisy fragments. NMFscape provides several complementary diagnostics to guide this decision.
+
+```{r load-packages, message=FALSE}
+library(NMFscape)
+library(SingleCellExperiment)
+library(scuttle)
+library(scater)
+library(scRNAseq)
+library(ggplot2)
+
+set.seed(427)
+```
+
+## Prepare data
+
+We use the Zeisel brain dataset with ~3,000 cells across 7 major cell types.
+
+```{r prepare-data}
+sce <- ZeiselBrainData()
+sce <- sce[!grepl("^mt-", rownames(sce)), ]
+sce <- logNormCounts(sce)
+```
+
+# Choosing the Right Distribution
+
+Before selecting k, consider which loss function is appropriate for your data. NMFscape supports Gaussian (MSE), generalized Poisson, negative binomial, and other distributions via RcppML.
+
+`selectDistribution()` compares multiple loss functions and recommends the best one based on BIC:
+
+```{r select-distribution}
+dist_result <- selectDistribution(sce, k = 10, verbose = FALSE)
+
+# Best distribution
+dist_result$best
+
+# Full comparison
+dist_result$comparison
+```
+
+For log-normalized data, MSE is typically the best choice. For raw counts, Poisson or negative binomial may be more appropriate.
+
+# Cross-Validation for Rank Selection
+
+`selectRank()` uses held-out cross-validation: a fraction of matrix entries are masked during training, then reconstruction error is evaluated on the masked entries. The optimal k minimizes test error.
+
+```{r cross-validation}
+cv_results <- selectRank(sce, k = seq(2, 20, by = 2),
+                         test_fraction = 0.2, verbose = FALSE)
+cv_results
+```
+
+Visualize the results as an elbow plot. The dashed red line marks the rank with lowest test error:
+
+```{r plot-cv, fig.width=6, fig.height=4}
+plotRankSelection(cv_results)
+```
+
+For more robust estimates, run multiple replicates:
+
+```{r cv-replicates}
+cv_reps <- selectRank(sce, k = seq(2, 20, by = 2),
+                      test_fraction = 0.2, n_reps = 3,
+                      seed = 42, verbose = FALSE)
+
+# Error bars show standard deviation across replicates
+plotRankSelection(cv_reps)
+```
+
+# Consensus Stability
+
+Another approach is to check how stable the factorization is across random initializations. `consensusNMF()` runs NMF multiple times and measures agreement via the cophenetic correlation coefficient. Higher values indicate more stable, reproducible factorizations.
+
+```{r consensus, message=FALSE}
+# Test stability at k = 5, 10, 15
+cophenetic_scores <- vapply(c(5, 10, 15), function(ki) {
+    sce_tmp <- consensusNMF(sce, k = ki, n_runs = 10, verbose = FALSE)
+    metadata(sce_tmp)$cNMF_consensus$cophenetic
+}, numeric(1))
+
+data.frame(k = c(5, 10, 15), cophenetic = round(cophenetic_scores, 4))
+```
+
+A cophenetic score close to 1 indicates high stability. A sharp drop suggests the factorization is becoming unstable at that rank.
+
+# Assessing Against Known Labels
+
+When cell type annotations are available, `assessNMF()` evaluates how well the NMF embedding separates known groups using clustering metrics (ARI, NMI, silhouette) and cross-validated classification accuracy.
+
+```{r assess-labels}
+sce <- runNMFscape(sce, k = 10, verbose = FALSE)
+
+assessment <- assessNMF(sce, label_col = "level1class", min_class_size = 5)
+
+# Key metrics
+data.frame(
+    metric = c("ARI", "NMI", "Silhouette", "KNN Accuracy"),
+    value = round(c(
+        assessment$metrics$ari,
+        assessment$metrics$nmi,
+        assessment$metrics$silhouette,
+        assessment$metrics$accuracy_knn
+    ), 3)
+)
+```
+
+# Model Evaluation
+
+`evaluateNMF()` computes the reconstruction loss for a fitted model --- how well does the factorization approximate the original data?
+
+```{r evaluate}
+loss <- evaluateNMF(sce)
+cat("Reconstruction loss (MSE):", round(loss, 4), "\n")
+```
+
+Lower loss indicates better fit, but beware of overfitting at very high k.
+
+# Practical Recommendations
+
+| Diagnostic | What it tells you | When to use |
+|---|---|---|
+| `selectRank()` | Optimal k by held-out reconstruction error | Always --- this is the primary diagnostic |
+| `selectDistribution()` | Best loss function for your data type | Before running NMF, especially with count data |
+| `consensusNMF()` | Factorization stability at a given k | When cross-validation is ambiguous |
+| `assessNMF()` | Agreement with known biology | When cell type labels are available |
+| `evaluateNMF()` | Reconstruction quality | Comparing models with different parameters |
+
+In practice, we recommend:
+
+1. Start with `selectRank()` to get a cross-validation curve
+2. Pick k near the elbow (where test error stops decreasing)
+3. Validate with `assessNMF()` if labels are available
+4. Check `consensusNMF()` if the elbow is ambiguous
+
+For most single-cell brain datasets, k between 10--30 works well. Larger, more heterogeneous datasets may need higher k.
+
+# Session Information
+
+```{r session-info, eval = TRUE}
+sessionInfo()
+```

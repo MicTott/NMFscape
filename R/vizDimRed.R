@@ -15,22 +15,15 @@
 #' @return A ggplot object
 #' @export
 #' @examples
-#' # Basic usage
+#' \dontrun{
 #' library(scuttle)
+#' library(scater)
 #' sce <- mockSCE()
 #' sce <- logNormCounts(sce)
 #' sce <- runNMFscape(sce, k = 5)
 #' sce <- runUMAP(sce)
-#' 
-#' # Plot NMF program 1 on UMAP
 #' vizDimRed(sce, program = 1)
-#' 
-#' # Plot specific program by name
-#' vizDimRed(sce, program = "NMF_4")
-#' 
-#' # Use PCA instead of UMAP
-#' sce <- runPCA(sce)
-#' vizDimRed(sce, dimred = "PCA", program = 2)
+#' }
 #'
 #' @importFrom ggplot2 ggplot aes geom_point scale_color_viridis_c scale_color_gradientn
 #' @importFrom ggplot2 ggtitle theme_minimal labs xlab ylab

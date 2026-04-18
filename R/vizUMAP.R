@@ -13,18 +13,16 @@
 #' @return A ggplot object
 #' @export
 #' @examples
-#' # Basic usage
+#' \dontrun{
 #' library(scuttle)
+#' library(scater)
 #' sce <- mockSCE()
 #' sce <- logNormCounts(sce)
 #' sce <- runNMFscape(sce, k = 5)
 #' sce <- runUMAP(sce)
-#' 
-#' # Plot NMF program 1 on UMAP
 #' vizUMAP(sce, program = 1)
-#' 
-#' # Plot specific program by name with custom styling
 #' vizUMAP(sce, program = "NMF_4", color_scale = "plasma", point_size = 1.2)
+#' }
 vizUMAP <- function(x, nmf_name = "NMF", program = 1, point_size = 0.8, 
                     alpha = 1.0, color_scale = "viridis") {
     

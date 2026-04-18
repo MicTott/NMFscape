@@ -1,8 +1,8 @@
 Package: NMFscape
 Type: Package
 Title: Fast Non-negative Matrix Factorization for Single Cell and Spatial Data
-Version: 0.99.0
-Date: 2025-09-09
+Version: 0.99.1
+Date: 2026-04-08
 Authors@R: c(
     person("Michael", "Totty", email = "mictott@gmail.com", 
     role = c("aut", "cre"), comment = c(ORCID = "0000-0002-9292-8556")
@@ -15,7 +15,7 @@ Description: This package provides high-performance non-negative matrix
 License: Artistic-2.0
 Encoding: UTF-8
 Depends:
-    R (>= 4.5.0),
+    R (>= 4.4.0),
     BiocGenerics,
     SingleCellExperiment,
     SpatialExperiment,
@@ -25,7 +25,7 @@ Imports:
     utils,
     S4Vectors,
     SummarizedExperiment,
-    RcppML,
+    RcppML (>= 1.0.0),
     parallel,
     Matrix,
     ggplot2,

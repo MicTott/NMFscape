@@ -1,0 +1,219 @@
+---
+title: "Discovering Cell Type Programs"
+author: "Michael Totty"
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{Discovering Cell Type Programs}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 10,
+  fig.height = 6,
+  eval = FALSE
+)
+```
+
+*Note: This vignette contains code that downloads datasets and runs
+computationally intensive analyses. Set `eval = TRUE` or run chunks
+interactively to execute.*
+
+# Introduction
+
+NMF programs often correspond to cell type-specific gene expression signatures. This vignette demonstrates how to interpret NMF programs biologically using the Tasic mouse visual cortex dataset, which has detailed neuronal subtype annotations including GABAergic neurons, glutamatergic neurons, and non-neuronal cell types.
+
+```{r load-packages, message=FALSE}
+library(NMFscape)
+library(SingleCellExperiment)
+library(scuttle)
+library(scater)
+library(scRNAseq)
+library(ggplot2)
+library(patchwork)
+
+set.seed(427)
+```
+
+# Data Preparation
+
+The Tasic dataset (Tasic et al. 2016, *Nature Neuroscience*) contains ~1,800 cells from the mouse primary visual cortex with expert-annotated cell types at multiple granularities.
+
+```{r prepare-data}
+sce <- TasicBrainData()
+
+# Remove unclassified cells
+sce <- sce[, sce$broad_type != "Unclassified"]
+
+# Basic QC and normalization
+sce <- logNormCounts(sce)
+sce <- runPCA(sce, ncomponents = 20)
+sce <- runUMAP(sce, dimred = "PCA", min_dist=0.5)
+```
+
+```{r show-celltypes, fig.width=8, fig.height=5}
+plotReducedDim(sce, dimred = "UMAP", colour_by = "broad_type",
+               point_size = 1.2) +
+    ggtitle("Tasic Visual Cortex - Broad Cell Types")
+```
+
+The broad types include GABAergic neurons, glutamatergic neurons, astrocytes, oligodendrocytes, microglia, endothelial cells, and OPCs.
+
+# Run NMF
+
+We use k=15 to capture both broad cell classes and finer subtype distinctions:
+
+```{r run-nmf}
+sce <- runNMFscape(sce, k = 15, verbose = FALSE)
+```
+
+# Program-to-Cell-Type Mapping
+
+## Broad cell type resolution
+
+Dot plots reveal which programs are active in each cell type. Dot size reflects the percentage of cells with non-zero program usage; color reflects total program weight.
+
+```{r dotplot-broad, fig.width=8, fig.height=6}
+plotProgramDots(sce, group = "broad_type")
+```
+
+## Fine subtype resolution
+
+The `primary_type` annotation provides more granular subtype labels:
+
+```{r dotplot-fine, fig.width=10, fig.height=10}
+plotProgramDots(sce, group = "primary_type")
+```
+
+At this resolution, individual programs often map to specific neuronal subtypes.
+
+# Signature Genes
+
+## Gene weight heatmap
+
+`plotProgramHeatmap()` with `make_unique = TRUE` assigns each gene to at most one program, producing clean, non-overlapping signatures:
+
+```{r gene-heatmap, fig.width=5, fig.height=10}
+plotProgramHeatmap(sce, n_genes = 10, make_unique = TRUE,
+                   cluster_rows = FALSE)
+```
+
+## Identifying known markers
+
+We can check whether NMF recovers known cell type markers:
+
+```{r top-features}
+top_genes <- getTopFeatures(sce, n = 5)
+
+# Show top 5 genes per program
+top_genes
+```
+
+Look for:
+
+- **GABAergic markers**: Gad1, Gad2, Slc32a1
+- **Glutamatergic markers**: Slc17a7, Slc17a6
+- **Astrocyte markers**: Aqp4, Gfap, Aldh1l1
+- **Oligodendrocyte markers**: Mbp, Plp1, Mog
+- **Microglia markers**: Cx3cr1, P2ry12
+
+# Differential Program Analysis
+
+`FindAllDEPs()` statistically tests which programs are enriched in each cell type using a 1-vs-all framework:
+
+```{r deps}
+deps <- FindAllDEPs(sce, cell_type_col = "broad_type")
+```
+
+```{r dep-volcano, fig.width=12, fig.height=8}
+plotDEPsVolcano(deps, fold_threshold = 1.5, pval_threshold = 0.05)
+```
+
+The heatmap provides a compact summary across all cell types:
+
+```{r dep-heatmap, fig.width=4, fig.height=5}
+plotDEPsHeatmap(deps, logfc_threshold = 2, star_size = 12)
+```
+
+# Label-Guided Refinement
+
+When cell type labels are available, `refineNMF()` can sharpen the embedding by shifting factor loadings toward class centroids. This is useful when you want programs to more cleanly separate known groups.
+
+```{r refine}
+sce <- refineNMF(sce, label_col = "broad_type", verbose = FALSE)
+```
+
+## Comparing before and after refinement
+
+```{r assess-comparison}
+# Assess original NMF
+original <- assessNMF(sce, name = "NMF", label_col = "broad_type",
+                      min_class_size = 5)
+
+# Assess refined NMF
+refined <- assessNMF(sce, name = "NMF_refined", label_col = "broad_type",
+                     min_class_size = 5)
+
+data.frame(
+    metric = c("ARI", "NMI", "Silhouette", "KNN Accuracy"),
+    original = round(c(original$metrics$ari, original$metrics$nmi,
+                       original$metrics$silhouette,
+                       original$metrics$accuracy_knn), 3),
+    refined = round(c(refined$metrics$ari, refined$metrics$nmi,
+                      refined$metrics$silhouette,
+                      refined$metrics$accuracy_knn), 3)
+)
+```
+
+Refinement should improve all metrics, particularly for cell types that were partially mixed in the original embedding. This improves moderately for `broad_type` labels, where most programs were already well-separated Now let's try this for`"primary_type` labels, where there was more overlap is NMF patterns. 
+
+```{r refine}
+sce <- refineNMF(sce, label_col = "primary_type", verbose = FALSE)
+```
+
+## Comparing before and after refinement
+
+```{r assess-comparison}
+# Assess original NMF
+original <- assessNMF(sce, name = "NMF", label_col = "primary_type",
+                      min_class_size = 5)
+
+# Assess refined NMF
+refined <- assessNMF(sce, name = "NMF_refined", label_col = "primary_type",
+                     min_class_size = 5)
+
+data.frame(
+    metric = c("ARI", "NMI", "Silhouette", "KNN Accuracy"),
+    original = round(c(original$metrics$ari, original$metrics$nmi,
+                       original$metrics$silhouette,
+                       original$metrics$accuracy_knn), 3),
+    refined = round(c(refined$metrics$ari, refined$metrics$nmi,
+                      refined$metrics$silhouette,
+                      refined$metrics$accuracy_knn), 3)
+)
+```
+
+Refining the NMF embeddings substantially improved all metrics for the finer resolution labels. This indicates that the refined programs are much more specific to the known subtypes. We can visually confirm this by plotting the refined programs again.
+
+```{r dotplot-fine, fig.width=15, fig.height=10}
+
+p1 <- plotProgramDots(sce, group = "primary_type", nmf_name="NMF")
+
+p2 <- plotProgramDots(sce, group = "primary_type", nmf_name="NMF_refined")
+
+p1 + p2
+```
+
+# Session Information
+
+```{r session-info, eval = TRUE}
+sessionInfo()
+```

@@ -1,7 +1,12 @@
 #' Extract NMF basis matrix from SingleCellExperiment object
 #'
+#' For multi-modal results from \code{\link{runMultiModalNMF}}, use the
+#' \code{modality} parameter to retrieve the basis for a specific modality.
+#'
 #' @param x A SingleCellExperiment object with NMF results
 #' @param name Character, name of the NMF result to extract (default "NMF")
+#' @param modality Character, optional modality name for multi-modal results
+#'   (e.g., "RNA", "ATAC"). If NULL, returns the standard basis matrix.
 #'
 #' @return Matrix with features x factors (basis matrix)
 #' @export
@@ -12,16 +17,29 @@
 #' sce <- runNMFscape(sce, k = 3, verbose = FALSE)
 #' basis <- getBasis(sce)
 #' dim(basis)
-getBasis <- function(x, name = "NMF") {
+getBasis <- function(x, name = "NMF", modality = NULL) {
     if (!is(x, "SingleCellExperiment")) {
         stop("x must be a SingleCellExperiment object")
     }
-    
-    basis_name <- paste0(name, "_basis")
-    if (!basis_name %in% names(metadata(x))) {
-        stop("Basis matrix '", basis_name, "' not found in metadata. Run runNMFscape() first.")
+
+    if (!is.null(modality)) {
+        basis_name <- paste0(name, "_basis_", modality)
+    } else {
+        basis_name <- paste0(name, "_basis")
     }
-    
+
+    if (!basis_name %in% names(metadata(x))) {
+        # Check if this is a multi-modal result and provide helpful error
+        modalities_key <- paste0(name, "_modalities")
+        if (is.null(modality) && modalities_key %in% names(metadata(x))) {
+            mods <- metadata(x)[[modalities_key]]
+            stop("Multi-modal NMF result '", name, "' requires a modality. ",
+                 "Available: ", paste(mods, collapse = ", "))
+        }
+        stop("Basis matrix '", basis_name, "' not found in metadata. ",
+             "Run runNMFscape() first.")
+    }
+
     return(metadata(x)[[basis_name]])
 }
 
@@ -56,6 +74,7 @@ getCoefficients <- function(x, name = "NMF") {
 #' @param x A SingleCellExperiment object with NMF results
 #' @param name Character, name of the NMF result to use (default "NMF")
 #' @param n Integer, number of top features to return per factor (default 10)
+#' @param modality Character, optional modality name for multi-modal results
 #'
 #' @return List of character vectors, each containing top features for a factor
 #' @export
@@ -66,8 +85,8 @@ getCoefficients <- function(x, name = "NMF") {
 #' sce <- runNMFscape(sce, k = 3, verbose = FALSE)
 #' top_genes <- getTopFeatures(sce, n = 10)
 #' head(top_genes[[1]])
-getTopFeatures <- function(x, name = "NMF", n = 10) {
-    basis <- getBasis(x, name)
+getTopFeatures <- function(x, name = "NMF", n = 10, modality = NULL) {
+    basis <- getBasis(x, name, modality = modality)
     
     top_features <- apply(basis, 2, function(col) {
         idx <- order(col, decreasing = TRUE)[seq_len(min(n, length(col)))]
@@ -92,10 +111,14 @@ getTopFeatures <- function(x, name = "NMF", n = 10) {
 
 #' Reconstruct original matrix from NMF factors
 #'
+#' Uses the raw model (W * diag(d) * H) when available for exact reconstruction,
+#' otherwise falls back to basis \%*\% t(coefficients) which is correct when
+#' d was absorbed.
+#'
 #' @param x A SingleCellExperiment object with NMF results
 #' @param name Character, name of the NMF result to use (default "NMF")
 #'
-#' @return Reconstructed matrix (basis %*% t(coefficients))
+#' @return Reconstructed matrix (features x cells)
 #' @export
 #' @examples
 #' library(scuttle)
@@ -105,8 +128,63 @@ getTopFeatures <- function(x, name = "NMF", n = 10) {
 #' reconstructed <- reconstructNMF(sce)
 #' dim(reconstructed)
 reconstructNMF <- function(x, name = "NMF") {
+    model_name <- paste0(name, "_model")
+    if (model_name %in% names(metadata(x))) {
+        model <- metadata(x)[[model_name]]
+        return(model@w %*% diag(model@d, nrow = length(model@d)) %*% model@h)
+    }
     basis <- getBasis(x, name)
     coeffs <- getCoefficients(x, name)
-    
     return(basis %*% t(coeffs))
+}
+
+#' Extract raw RcppML NMF model from SingleCellExperiment object
+#'
+#' Returns the raw RcppML S4 nmf model object stored by \code{\link{runNMFscape}}.
+#' Useful for passing to RcppML functions like \code{predict},
+#' \code{refine}, \code{align}, etc.
+#'
+#' @param x A SingleCellExperiment object with NMF results
+#' @param name Character, name of the NMF result (default "NMF")
+#'
+#' @return An S4 object of class \code{nmf} from RcppML with slots
+#'   \code{@@w}, \code{@@d}, \code{@@h}, \code{@@misc}
+#' @export
+#' @examples
+#' library(scuttle)
+#' sce <- mockSCE(ngenes = 100, ncells = 50)
+#' sce <- logNormCounts(sce)
+#' sce <- runNMFscape(sce, k = 3, verbose = FALSE)
+#' model <- getModel(sce)
+#' dim(model@@w)
+getModel <- function(x, name = "NMF") {
+    if (!is(x, "SingleCellExperiment")) {
+        stop("x must be a SingleCellExperiment object")
+    }
+    model_name <- paste0(name, "_model")
+    if (!model_name %in% names(metadata(x))) {
+        stop("NMF model '", model_name, "' not found in metadata. ",
+             "Run runNMFscape() first.")
+    }
+    metadata(x)[[model_name]]
+}
+
+#' Extract diagonal scaling vector from NMF decomposition
+#'
+#' Returns the diagonal scaling vector d from the decomposition A = W * diag(d) * H.
+#'
+#' @param x A SingleCellExperiment object with NMF results
+#' @param name Character, name of the NMF result (default "NMF")
+#'
+#' @return Numeric vector of length k (diagonal scaling factors)
+#' @export
+#' @examples
+#' library(scuttle)
+#' sce <- mockSCE(ngenes = 100, ncells = 50)
+#' sce <- logNormCounts(sce)
+#' sce <- runNMFscape(sce, k = 3, verbose = FALSE)
+#' getDiagonal(sce)
+getDiagonal <- function(x, name = "NMF") {
+    model <- getModel(x, name)
+    model@d
 }

@@ -4,7 +4,7 @@
 \alias{getTopFeatures}
 \title{Calculate feature loadings (which genes contribute most to each factor)}
 \usage{
-getTopFeatures(x, name = "NMF", n = 10)
+getTopFeatures(x, name = "NMF", n = 10, modality = NULL)
 }
 \arguments{
 \item{x}{A SingleCellExperiment object with NMF results}
@@ -12,6 +12,8 @@ getTopFeatures(x, name = "NMF", n = 10)
 \item{name}{Character, name of the NMF result to use (default "NMF")}
 
 \item{n}{Integer, number of top features to return per factor (default 10)}
+
+\item{modality}{Character, optional modality name for multi-modal results}
 }
 \value{
 List of character vectors, each containing top features for a factor

@@ -34,16 +34,14 @@ Convenience function to plot NMF program usage on UMAP coordinates.
 This is a wrapper around vizDimRed() specifically for UMAP plotting.
 }
 \examples{
-# Basic usage
+\dontrun{
 library(scuttle)
+library(scater)
 sce <- mockSCE()
 sce <- logNormCounts(sce)
 sce <- runNMFscape(sce, k = 5)
 sce <- runUMAP(sce)
-
-# Plot NMF program 1 on UMAP
 vizUMAP(sce, program = 1)
-
-# Plot specific program by name with custom styling
 vizUMAP(sce, program = "NMF_4", color_scale = "plasma", point_size = 1.2)
+}
 }

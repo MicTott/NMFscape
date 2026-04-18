@@ -13,6 +13,9 @@ runNMFscape(
   tol = 1e-05,
   maxit = 100,
   L1 = c(0, 0),
+  L2 = c(0, 0),
+  distribution = "mse",
+  absorb_d = TRUE,
   seed = NULL,
   verbose = TRUE,
   ...
@@ -35,31 +38,48 @@ runNMFscape(
 
 \item{L1}{Numeric vector of length 2, L1 regularization for [w, h] (default c(0,0))}
 
+\item{L2}{Numeric vector of length 2, L2 regularization for [w, h] (default c(0,0))}
+
+\item{distribution}{Character, loss function distribution. One of "mse",
+"gp" (generalized Poisson), "nb" (negative binomial), "gamma",
+"inverse_gaussian", "tweedie", or "auto" to select via BIC using
+\code{\link[RcppML]{auto_nmf_distribution}} (default "mse")}
+
+\item{absorb_d}{Logical, whether to absorb the diagonal scaling factor into
+W and H symmetrically (default TRUE). When TRUE, the stored basis and
+coefficient matrices satisfy A ~ W_eff \%*\% t(H_eff). When FALSE, raw W
+and H are stored and the diagonal is available via \code{\link{getDiagonal}}.}
+
 \item{seed}{Integer, random seed for reproducibility}
 
 \item{verbose}{Logical, whether to print progress (default TRUE)}
 
-\item{...}{Additional arguments passed to RcppML::nmf}
+\item{...}{Additional arguments passed to \code{\link[RcppML]{nmf}}, including
+\code{nonneg}, \code{robust}, \code{zi}, \code{projective}, \code{symmetric}}
 }
 \value{
-The input object with NMF results stored in reducedDims(x, name)
-  and metadata stored in metadata(x)$NMF
+The input object with NMF results stored in:
+  \itemize{
+    \item \code{reducedDim(x, name)}: cells x k coefficient matrix
+    \item \code{metadata(x)[[paste0(name, "_basis")]]}: genes x k basis matrix
+    \item \code{metadata(x)[[paste0(name, "_model")]]}: raw RcppML S4 nmf object
+  }
 }
 \description{
 Performs NMF using RcppML on SingleCellExperiment or SpatialExperiment objects
-and stores results in reducedDims slot with metadata
+and stores results in reducedDims slot with metadata. The raw RcppML model
+object is also stored for use by downstream functions like
+\code{\link{predictNMF}} and \code{\link{refineNMF}}.
 }
 \examples{
-# Single-cell example
 library(scuttle)
 sce <- mockSCE()
 sce <- logNormCounts(sce)
 sce <- runNMFscape(sce, k = 10)
 
-# Access NMF coefficients (cell loadings)
+# Access results
 nmf_coords <- reducedDim(sce, "NMF")
-
-# Access basis matrix from metadata
 basis <- metadata(sce)$NMF_basis
+model <- getModel(sce)
 
 }

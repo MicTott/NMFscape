@@ -1,0 +1,139 @@
+---
+title: "Deep NMF: Hierarchical Gene Programs"
+author: "Michael Totty"
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{Deep NMF: Hierarchical Gene Programs}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 10,
+  fig.height = 6,
+  eval = FALSE
+)
+```
+
+*Note: This vignette contains code that downloads datasets and runs
+computationally intensive analyses. Set `eval = TRUE` or run chunks
+interactively to execute.*
+
+# Introduction
+
+Brain cell types are organized hierarchically: neurons and glia form the broadest division, which subdivides into excitatory/inhibitory neurons, astrocytes, oligodendrocytes, etc. Deep (multi-layer) NMF captures this hierarchy naturally --- the first layer learns fine-grained gene programs, and subsequent layers group them into meta-programs that correspond to broader biological categories.
+
+NMFscape's `runDeepNMF()` wraps RcppML's FactorNet graph DSL to make hierarchical factorization as simple as specifying a vector of ranks.
+
+```{r load-packages, message=FALSE}
+library(NMFscape)
+library(SingleCellExperiment)
+library(scuttle)
+library(scater)
+library(scRNAseq)
+library(ggplot2)
+library(patchwork)
+
+set.seed(427)
+```
+
+# Data Preparation
+
+```{r prepare-data}
+sce <- ZeiselBrainData()
+sce <- sce[!grepl("^mt-", rownames(sce)), ]
+sce <- logNormCounts(sce)
+sce <- runPCA(sce, ncomponents = 20)
+sce <- runUMAP(sce, dimred = "PCA")
+```
+
+# Running Deep NMF
+
+Specify a vector of ranks to define the hierarchy. Here, 20 fine-grained programs are compressed into 5 meta-programs:
+
+```{r run-deep}
+sce <- runDeepNMF(sce, k = c(20, 5), verbose = FALSE)
+```
+
+The results include:
+
+- **Effective basis** (genes x 5): maps original features directly to meta-programs
+- **Per-layer details**: the full W, H, and d for each layer
+- **Cell embedding** (cells x 5): the meta-program coefficients for each cell
+
+```{r check-results}
+# Effective basis maps genes to 5 meta-programs
+eff_basis <- getBasis(sce, "DeepNMF")
+dim(eff_basis)
+
+# Per-layer details
+layers <- metadata(sce)$DeepNMF_layers
+cat("Layer 1 W:", dim(layers$layer_1$W), "(genes x 20 programs)\n")
+cat("Layer 2 W:", dim(layers$layer_2$W), "(cells x 5 meta-programs)\n")
+```
+
+# Exploring the Hierarchy
+
+## Meta-program gene signatures
+
+The effective basis tells us which genes define each meta-program. Since this is computed by propagating through all layers, it maps original genes directly to the final meta-programs:
+
+```{r meta-signatures}
+top_meta <- getTopFeatures(sce, name = "DeepNMF", n = 10)
+top_meta
+```
+
+## Meta-programs vs cell types
+
+```{r meta-dotplot, fig.width=6, fig.height=5}
+plotProgramDots(sce, group = "level1class", nmf_name = "DeepNMF")
+```
+
+With k=5 meta-programs and ~7 cell types, each meta-program typically corresponds to a broad biological category (e.g., neurons, glia, immune cells).
+
+# Comparing to Single-Layer NMF
+
+How does deep NMF compare to standard NMF at the same final rank?
+
+```{r compare-standard}
+# Standard NMF with k=5 (same final dimensionality)
+sce <- runNMFscape(sce, k = 5, name = "NMF_k5", verbose = FALSE)
+
+# Standard NMF with k=20 (same first-layer dimensionality)
+sce <- runNMFscape(sce, k = 20, name = "NMF_k20", verbose = FALSE)
+```
+
+```{r compare-dotplots, fig.width=14, fig.height=5}
+p1 <- plotProgramDots(sce, group = "level1class", nmf_name = "NMF_k5") +
+    ggtitle("Standard NMF (k=5)")
+p2 <- plotProgramDots(sce, group = "level1class", nmf_name = "DeepNMF") +
+    ggtitle("Deep NMF (20 -> 5)")
+p1 + p2
+```
+
+Deep NMF often produces cleaner meta-programs because the first layer captures fine-grained variation, and the second layer finds natural groupings among those programs rather than trying to directly compress from the full gene space.
+
+# When to Use Deep NMF
+
+Deep NMF is most useful when:
+
+- Your data has a clear hierarchical structure (e.g., brain cell types)
+- You want both fine-grained programs and interpretable meta-programs
+- Standard NMF at low k produces mixed or ambiguous programs
+- You need a compact embedding but don't want to lose biological detail
+
+For datasets without clear hierarchy, standard `runNMFscape()` with a single k is simpler and often sufficient.
+
+# Session Information
+
+```{r session-info, eval = TRUE}
+sessionInfo()
+```

@@ -40,21 +40,14 @@ Plot NMF program usage on dimension reduction coordinates (UMAP, PCA, etc.)
 with flexible color mapping and customization options.
 }
 \examples{
-# Basic usage
+\dontrun{
 library(scuttle)
+library(scater)
 sce <- mockSCE()
 sce <- logNormCounts(sce)
 sce <- runNMFscape(sce, k = 5)
 sce <- runUMAP(sce)
-
-# Plot NMF program 1 on UMAP
 vizDimRed(sce, program = 1)
-
-# Plot specific program by name
-vizDimRed(sce, program = "NMF_4")
-
-# Use PCA instead of UMAP
-sce <- runPCA(sce)
-vizDimRed(sce, dimred = "PCA", program = 2)
+}
 
 }

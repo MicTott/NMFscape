@@ -4,18 +4,22 @@
 \alias{getBasis}
 \title{Extract NMF basis matrix from SingleCellExperiment object}
 \usage{
-getBasis(x, name = "NMF")
+getBasis(x, name = "NMF", modality = NULL)
 }
 \arguments{
 \item{x}{A SingleCellExperiment object with NMF results}
 
 \item{name}{Character, name of the NMF result to extract (default "NMF")}
+
+\item{modality}{Character, optional modality name for multi-modal results
+(e.g., "RNA", "ATAC"). If NULL, returns the standard basis matrix.}
 }
 \value{
 Matrix with features x factors (basis matrix)
 }
 \description{
-Extract NMF basis matrix from SingleCellExperiment object
+For multi-modal results from \code{\link{runMultiModalNMF}}, use the
+\code{modality} parameter to retrieve the basis for a specific modality.
 }
 \examples{
 library(scuttle)
