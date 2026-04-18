@@ -1,11 +1,11 @@
 url: https://mictott.github.io/NMFscape/
 template:
   bootstrap: 5
-  
+
 home:
   title: "NMFscape: Fast Non-negative Matrix Factorization for Single Cell and Spatial Data"
   description: >
-    High-performance non-negative matrix factorization (NMF) methods for 
+    High-performance non-negative matrix factorization (NMF) methods for
     SingleCellExperiment and SpatialExperiment objects using the RcppML backend.
 
 navbar:
@@ -24,6 +24,24 @@ navbar:
       menu:
       - text: Getting Started
         href: articles/getting-started.html
+      - text: Package Overview
+        href: articles/NMFscape.html
+      - text: -------
+      - text: "Model Selection"
+      - text: Choosing k
+        href: articles/choosing-k.html
+      - text: -------
+      - text: "Biological Interpretation"
+      - text: Discovering Cell Type Programs
+        href: articles/cell-type-programs.html
+      - text: -------
+      - text: "Advanced Workflows"
+      - text: "Deep NMF: Hierarchical Gene Programs"
+        href: articles/deep-nmf.html
+      - text: Multi-Modal NMF Analysis
+        href: articles/multi-modal.html
+      - text: Transfer Learning and Batch Correction
+        href: articles/transfer-learning.html
     news:
       text: Changelog
       href: news/index.html
@@ -33,29 +51,55 @@ navbar:
       aria-label: GitHub
 
 reference:
-- title: Main Functions
-  desc: Core NMF functions
+- title: Core NMF
+  desc: Fit NMF models on SingleCellExperiment objects
   contents:
   - runNMFscape
+  - consensusNMF
 
-- title: NMF Accessors
-  desc: Access NMF results
+- title: FactorNet Recipes
+  desc: Multi-layer and multi-modal NMF via the RcppML FactorNet graph DSL
+  contents:
+  - runDeepNMF
+  - runMultiModalNMF
+  - runConditionedNMF
+  - runFactorNet
+
+- title: Diagnostics and Model Selection
+  desc: Choose k, select loss distribution, evaluate model quality
+  contents:
+  - selectRank
+  - plotRankSelection
+  - selectDistribution
+  - evaluateNMF
+  - assessNMF
+
+- title: Transfer Learning
+  desc: Project new data onto existing models and refine with labels
+  contents:
+  - predictNMF
+  - refineNMF
+
+- title: Accessors
+  desc: Extract NMF results from SingleCellExperiment objects
   contents:
   - getBasis
   - getCoefficients
   - getTopFeatures
   - reconstructNMF
+  - getModel
+  - getDiagonal
 
 - title: Visualization
-  desc: Plotting functions for results
+  desc: Plot NMF programs and results
   contents:
   - vizUMAP
   - vizDimRed
   - plotProgramHeatmap
   - plotProgramDots
 
-- title: Cell Type Analysis
-  desc: Differential program analysis for cell type mapping
+- title: Differential Program Analysis
+  desc: Identify cell type-enriched programs
   contents:
   - FindAllDEPs
   - plotDEPsVolcano
@@ -63,10 +107,28 @@ reference:
 
 
 articles:
-- title: Tutorials
+- title: Getting Started
   navbar: ~
   contents:
   - getting-started
+  - NMFscape
+
+- title: Model Selection
+  navbar: Model Selection
+  contents:
+  - choosing-k
+
+- title: Biological Interpretation
+  navbar: Biological Interpretation
+  contents:
+  - cell-type-programs
+
+- title: Advanced Workflows
+  navbar: Advanced Workflows
+  contents:
+  - deep-nmf
+  - multi-modal
+  - transfer-learning
 
 authors:
   Michael Totty:

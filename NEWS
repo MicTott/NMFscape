@@ -1,3 +1,93 @@
+Changes in version 0.99.1 (2026-04-08)
+========================================
+
+MAJOR CHANGES
+
+* Upgraded to RcppML (>= 1.0.0), which introduces an S4 nmf class with
+  slots @w, @d, @h, @misc and a three-factor decomposition A = W * diag(d) * H.
+  The diagonal scaling factor is absorbed symmetrically into W and H by default
+  (via the new absorb_d parameter, default TRUE).
+* Raw RcppML nmf models are now stored in metadata(x)[[paste0(name, "_model")]]
+  so downstream functions like predictNMF() and refineNMF() can use them.
+
+NEW FEATURES
+
+Rank selection and diagnostics:
+* selectRank() - cross-validation for optimal k via held-out reconstruction
+  error. Supports replicates for error-bar estimates.
+* plotRankSelection() - elbow plot visualization of CV results.
+* selectDistribution() - compare loss functions (MSE, Poisson, NB, etc.) and
+  recommend the best via BIC.
+* evaluateNMF() - compute reconstruction loss for a fitted model.
+* assessNMF() - evaluate embedding quality against known labels (ARI, NMI,
+  silhouette, classifier accuracy).
+
+Clustering and stability:
+* consensusNMF() - consensus NMF across replicates with cophenetic stability
+  score, cluster assignments, and consensus matrix.
+
+Transfer learning:
+* predictNMF() - project new SCE data onto an existing NMF model, with
+  automatic feature alignment.
+* refineNMF() - label-guided refinement of an NMF model using cell type
+  annotations, with optional batch correction.
+
+FactorNet recipe wrappers (multi-layer and multi-modal NMF):
+* runDeepNMF() - hierarchical NMF with multiple layers. Stores per-layer W/H/d
+  plus an effective basis mapping genes directly to meta-programs.
+* runMultiModalNMF() - joint NMF across modalities via shared cell embedding.
+  Supports SCE assays (same feature space) and altExps (different feature
+  spaces, e.g., RNA + ATAC).
+* runConditionedNMF() - batch-conditioned NMF that factors out a categorical
+  or numeric covariate during factorization.
+* runFactorNet() - power-user escape hatch for storing custom FactorNet graph
+  results in standard NMFscape SCE slots.
+
+Accessor enhancements:
+* getModel() - extract the raw RcppML S4 nmf model from metadata.
+* getDiagonal() - extract the diagonal scaling vector d.
+* getBasis() and getTopFeatures() gained a modality parameter for multi-modal
+  results, with helpful error messages when a modality is required but omitted.
+
+New parameters on existing functions:
+* runNMFscape() gained L2, distribution (with "auto" option that calls
+  auto_nmf_distribution()), and absorb_d parameters. Supports all 6 RcppML
+  loss distributions (mse, gp, nb, gamma, inverse_gaussian, tweedie).
+
+VIGNETTES
+
+New vignette suite focused on snRNA-seq brain data:
+* "Getting Started with NMFscape" - basic workflow (updated).
+* "NMFscape: Package Overview" - full function reference and vignette map.
+* "Choosing k: Rank Selection and Diagnostics" - CV, distribution selection,
+  consensus stability, label-based assessment.
+* "Discovering Cell Type Programs" - biological interpretation using Tasic
+  visual cortex data, including label-guided refinement.
+* "Deep NMF: Hierarchical Gene Programs" - multi-layer factorization.
+* "Multi-Modal NMF Analysis" - joint RNA + chromatin factorization.
+* "Transfer Learning and Batch Correction" - reference mapping with predictNMF()
+  and batch-corrected joint embedding with runConditionedNMF().
+
+BUG FIXES
+
+* Fixed R CMD check errors in vizDimRed() and vizUMAP() examples by wrapping
+  runUMAP-dependent code in \dontrun{}.
+* Fixed duplicate vignette title NOTE by repurposing NMFscape.Rmd as a package
+  overview (distinct from getting-started.Rmd).
+
+INTERNAL
+
+* Added R/factornet-utils.R with shared internal helpers (.validateSCE,
+  .extractAssayMatrix, .absorbDiagonal, .setFactorNames) to reduce
+  duplication across FactorNet wrappers.
+* Test suite expanded from 19 to 115 tests covering all new functionality.
+
+DEPRECATIONS / BREAKING CHANGES
+
+* Direct access to nmf_result$w and nmf_result$h from RcppML::nmf() output no
+  longer works. Use getBasis() and getCoefficients() accessors, or access S4
+  slots via getModel(sce)@w and getModel(sce)@h.
+
 Changes in version 0.99.0 (2025-09-09)
 ========================================
 
