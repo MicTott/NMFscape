@@ -49,7 +49,6 @@
 #' @importFrom RcppML nmf
 #' @importFrom SingleCellExperiment reducedDim<-
 #' @importFrom S4Vectors metadata<-
-#' @importFrom Matrix Matrix
 runNMFscape <- function(x, k, assay = "logcounts", name = "NMF",
                         subset_row = NULL, tol = 1e-5, maxit = 100,
                         L1 = c(0, 0), L2 = c(0, 0),

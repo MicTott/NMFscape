@@ -1,7 +1,47 @@
-Changes in version 0.99.1 (2026-04-08)
-========================================
+# Changes in version 0.99.3 (2026-08-25)
 
-MAJOR CHANGES
+## Bug Fixes
+
+* `runNMFscape()`, `consensusNMF()`, `runDeepNMF()` and `runConditionedNMF()`
+  now honor a character `subset_row`. Previously `rownames(x)[subset_row]`
+  assumed integer indexing, so passing gene names (the usual HVG workflow)
+  silently produced `NA` rownames in the stored basis, breaking `getBasis()`,
+  `getTopFeatures()` and `plotProgramHeatmap()`. Unknown feature names now
+  error instead of being subset out.
+* `runNMFscape(distribution = "auto")` now actually selects a distribution.
+  It read `$best` from `auto_nmf_distribution()`, which returns `$loss`, so
+  the chosen loss was `NULL` and silently fell back to `mse`.
+* `runDeepNMF()`, `runMultiModalNMF()` and `runConditionedNMF()` now apply
+  `L1`/`L2`. They accepted and documented the arguments but never passed them
+  to `nmf_layer()`, so regularization was ignored.
+* `runDeepNMF()` supports three or more layers. The `length(k) > 2` branch was
+  unfinished and errored with non-conformable arguments. Results for two
+  layers are unchanged.
+* `getDiagonal()`, `predictNMF()` and `reconstructNMF()` now work with results
+  from the FactorNet recipes, which store a `factor_net_result` rather than an
+  S4 `nmf`. `evaluateNMF()` reports why it cannot and where the fitted loss
+  lives.
+* `plotProgramDots()` colors by mean rather than summed program weight, so the
+  scale no longer tracks group size, and honors `color_palette`.
+
+## Breaking Changes
+
+* `L1`/`L2` in `runDeepNMF()`, `runMultiModalNMF()` and `runConditionedNMF()`
+  are now scalars rather than length-2 vectors, matching
+  `RcppML::nmf_layer()`, which applies one penalty per layer. Passing a
+  length-2 value errors with an explanation.
+* The data frame behind `plotProgramDots()` renames `sumWeight` to
+  `meanWeight`.
+
+## Internal
+
+* Dropped unused `Matrix` and `parallel` imports, declared `grDevices`, and
+  required `ggplot2 (>= 3.4.0)` for `linewidth`.
+* `NEWS` converted to `NEWS.md` so R can parse it.
+
+# Changes in version 0.99.1 (2026-04-08)
+
+## Major Changes
 
 * Upgraded to RcppML (>= 1.0.0), which introduces an S4 nmf class with
   slots @w, @d, @h, @misc and a three-factor decomposition A = W * diag(d) * H.
@@ -10,7 +50,7 @@ MAJOR CHANGES
 * Raw RcppML nmf models are now stored in metadata(x)[[paste0(name, "_model")]]
   so downstream functions like predictNMF() and refineNMF() can use them.
 
-NEW FEATURES
+## New Features
 
 Rank selection and diagnostics:
 * selectRank() - cross-validation for optimal k via held-out reconstruction
@@ -54,7 +94,7 @@ New parameters on existing functions:
   auto_nmf_distribution()), and absorb_d parameters. Supports all 6 RcppML
   loss distributions (mse, gp, nb, gamma, inverse_gaussian, tweedie).
 
-VIGNETTES
+## Vignettes
 
 New vignette suite focused on snRNA-seq brain data:
 * "Getting Started with NMFscape" - basic workflow (updated).
@@ -68,30 +108,29 @@ New vignette suite focused on snRNA-seq brain data:
 * "Transfer Learning and Batch Correction" - reference mapping with predictNMF()
   and batch-corrected joint embedding with runConditionedNMF().
 
-BUG FIXES
+## Bug Fixes
 
 * Fixed R CMD check errors in vizDimRed() and vizUMAP() examples by wrapping
   runUMAP-dependent code in \dontrun{}.
 * Fixed duplicate vignette title NOTE by repurposing NMFscape.Rmd as a package
   overview (distinct from getting-started.Rmd).
 
-INTERNAL
+## Internal
 
 * Added R/factornet-utils.R with shared internal helpers (.validateSCE,
   .extractAssayMatrix, .absorbDiagonal, .setFactorNames) to reduce
   duplication across FactorNet wrappers.
 * Test suite expanded from 19 to 115 tests covering all new functionality.
 
-DEPRECATIONS / BREAKING CHANGES
+## Deprecations / Breaking Changes
 
 * Direct access to nmf_result$w and nmf_result$h from RcppML::nmf() output no
   longer works. Use getBasis() and getCoefficients() accessors, or access S4
   slots via getModel(sce)@w and getModel(sce)@h.
 
-Changes in version 0.99.0 (2025-09-09)
-========================================
+# Changes in version 0.99.0 (2025-09-09)
 
-INITIAL RELEASE
+## Initial Release
 
 * First Bioconductor submission of NMFscape
 * Fast NMF implementation using RcppML backend for SingleCellExperiment objects
