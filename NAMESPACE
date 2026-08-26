@@ -34,6 +34,9 @@ importFrom(SingleCellExperiment, reducedDim, "reducedDim<-", reducedDimNames, al
 importFrom(SummarizedExperiment, colData, "colData<-")
 importFrom(utils, packageDescription, head, modifyList)
 importFrom(scran, findMarkers)
+importFrom(BiocNeighbors, findKNN, findNeighbors)
+importFrom(Matrix, sparseMatrix, Diagonal, rowSums, drop0, nnzero)
+importFrom(SpatialExperiment, spatialCoords)
 importFrom(stats, rnorm, cor, reorder, kmeans, dist, hclust, cophenetic, as.dist, median, model.matrix, na.omit)
 importFrom(ggplot2, ggplot, aes, geom_point, geom_line, geom_hline,
     geom_vline, geom_errorbar, scale_color_manual, scale_color_viridis_c,
@@ -68,6 +71,8 @@ export(runMultiModalNMF)
 export(runConditionedNMF)
 export(runGuidedNMF)
 export(runFactorNet)
+export(runSpatialNMF)
+export(spatialAutocorrelation)
 export(alignPrograms)
 export(plotProgramSimilarity)
 export(diagnoseNMF)

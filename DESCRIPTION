@@ -26,12 +26,15 @@ Imports:
     S4Vectors,
     SummarizedExperiment,
     RcppML (>= 1.0.0),
+    BiocNeighbors,
+    Matrix,
     grDevices,
     ggplot2 (>= 3.4.0),
     scran,
     pals
 Suggests:
     testthat (>= 3.0.0),
+    deldir,
     knitr,
     rmarkdown,
     BiocStyle,

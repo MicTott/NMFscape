@@ -42,24 +42,18 @@
 }
 
 
-test_that("enrichment improves agreement with labels, removal degrades it", {
+test_that("enrichment improves agreement with labels", {
     sce <- .testGuidedSCE()
 
     sce <- runGuidedNMF(sce, k = 5, label_col = "program", mode = "enrich",
                         strength = 1, name = "Enriched",
                         init_name = "Base", seed = 42, verbose = FALSE)
-    sce <- runGuidedNMF(sce, k = 5, label_col = "program", mode = "remove",
-                        strength = 0.5, name = "Removed",
-                        seed = 42, verbose = FALSE)
 
     ari_base <- .testARI(.argmaxLabels(sce, "Base"), sce$program)
     ari_enrich <- .testARI(.argmaxLabels(sce, "Enriched"), sce$program)
-    ari_remove <- .testARI(.argmaxLabels(sce, "Removed"), sce$program)
 
     expect_gt(ari_enrich, ari_base)
-    expect_lt(ari_remove, ari_base)
     expect_gt(ari_enrich, 0.95)
-    expect_lt(ari_remove, 0.5)
 })
 
 test_that("runGuidedNMF stores results in the standard slots", {
@@ -87,14 +81,22 @@ test_that("runGuidedNMF stores results in the standard slots", {
     expect_equal(guidance$n_guided, ncol(sce))
 })
 
-test_that("mode = 'remove' records a negative target_lambda", {
+test_that("mode = 'remove' is refused, and says what to use instead", {
     sce <- .testGuidedSCE(n_genes = 60, n_cells = 80, noise = 2)
 
-    sce <- runGuidedNMF(sce, k = 4, label_col = "program", mode = "remove",
-                        strength = 0.75, verbose = FALSE)
-
-    expect_equal(metadata(sce)$GuidedNMF_guidance$target_lambda, -0.75)
-    expect_equal(metadata(sce)$GuidedNMF_guidance$mode, "remove")
+    # RcppML's adversarial target removal collapses the embedding onto a
+    # single program at every strength from 0.5 to 10, leaving most programs
+    # identically zero, so the mode is disabled rather than shipped.
+    expect_error(
+        runGuidedNMF(sce, k = 4, label_col = "program", mode = "remove",
+                     strength = 0.75, verbose = FALSE),
+        "disabled"
+    )
+    expect_error(
+        runGuidedNMF(sce, k = 4, label_col = "program", mode = "remove",
+                     verbose = FALSE),
+        "runConditionedNMF"
+    )
 })
 
 test_that("partially labelled (NA) cells are retained and left unguided", {

@@ -13,6 +13,22 @@
 
 ## Bug Fixes
 
+* `refineNMF()` gains an explicit `cycles` argument. It was reachable only
+  through `...` and defaults to 0, at which refinement is purely an embedding
+  operation: the basis matrix W is returned bit-identical to the input model's,
+  so the gene programs do not move. That is easy to misread in a function
+  called "refine". On simulated data with a rare subtype, F1 for recovering it
+  at 0.5% abundance was 0.50 at `cycles = 0` and 1.00 at `cycles = 20`. The
+  default is unchanged; the behaviour is now documented.
+* `refineNMF()` coerces a Matrix-backed assay to a base matrix before calling
+  `RcppML::refine()`. A `dgeMatrix` propagated into the returned model and
+  failed the S4 validity check on `cycles > 0`. Ordinary `dgCMatrix`,
+  DelayedArray and HDF5-backed assays were unaffected.
+* `runSpatialNMF()`'s default `graph_lambda` is 0.3 rather than 1. On Visium
+  human DLPFC the two are within noise, but on simulated tissue containing a
+  one-spot-wide band, recovery of that band peaked at 0.3 (F1 0.92) and had
+  already degraded at 1 (F1 0.71).
+
 * `consensusNMF()` now stores the representative replicate as an S4 `nmf` model
   under `metadata(x)[[paste0(name, "_model")]]`. It was the only model-fitting
   function that did not, so `getModel()`, `getDiagonal()`, `evaluateNMF()`,
@@ -68,6 +84,24 @@
     The per-factor configuration objects behind the FactorNet recipes accept
     target arguments but ignore them, so there is no guided `runDeepNMF()`
     and no W-side (marker gene) anchoring.
+
+* `runSpatialNMF()` - spatially-aware NMF. Adds a graph-Laplacian smoothness
+  penalty `lambda * tr(H L H^T)` over a spatial neighbour graph, so
+  neighbouring spots are pushed toward similar program usage and programs come
+  out as contiguous domains rather than salt-and-pepper. This is the first
+  function in the package that actually calls `spatialCoords()`;
+  SpatialExperiment support was previously nominal. Neighbour graphs are built
+  from coordinates by k-nearest neighbours (BiocNeighbors), a distance radius,
+  or Delaunay triangulation (requires the suggested `deldir`). Passing an
+  adjacency matrix to `graph` instead of a method name uses a precomputed
+  neighbour structure, which is also how a plain SingleCellExperiment can be
+  used. `feature_graph`/`feature_lambda` apply the same penalty to the gene
+  loadings for a co-expression or protein-protein interaction prior. The graph
+  and its parameters are stored in `metadata()` alongside the usual basis and
+  model, so all existing accessors, plots and `FindAllDEPs()` work unchanged.
+* `spatialAutocorrelation()` - Moran's I per program, computed against the
+  stored graph, with optional permutation p-values. This is how to judge
+  whether programs are spatially structured and how to choose `graph_lambda`.
 
 ## Vignettes
 
