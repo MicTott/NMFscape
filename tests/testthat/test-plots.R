@@ -1,15 +1,6 @@
-setup_viz_sce <- function(ngenes = 200, ncells = 120) {
-    sce <- scuttle::mockSCE(ngenes = ngenes, ncells = ncells)
-    sce <- scuttle::logNormCounts(sce)
-    sce <- runNMFscape(sce, k = 4, seed = 1, verbose = FALSE)
-    sce$celltype <- rep(c("A", "B", "C"), length.out = ncol(sce))
-    sce
-}
-
 test_that("plotProgramDots summarizes usage by mean, not sum", {
-    skip_if_not_installed("scuttle")
-    sce <- setup_viz_sce()
-    # deliberately unbalanced groups: a sum would track group size
+    sce <- runNMFscape(makeSCE(ncells = 120), k = 4, seed = 1, verbose = FALSE)
+    # deliberately unbalanced: summing weights would track group size instead
     sce$grp <- c(rep("big", 100), rep("small", 20))
     p <- plotProgramDots(sce, group = "grp")
 
@@ -20,15 +11,14 @@ test_that("plotProgramDots summarizes usage by mean, not sum", {
                  mean(coeffs[sce$grp == "small", "NMF_1"]))
 })
 
-test_that("the plotting and DEP layer builds", {
-    skip_if_not_installed("scuttle")
-    skip_if_not_installed("scran")
+test_that("the plotting and differential-program layer builds", {
     skip_if_not_installed("pheatmap")
-    sce <- setup_viz_sce()
+    sce <- runNMFscape(makeSCE(ngenes = 300), k = 4, seed = 1, verbose = FALSE)
 
     expect_s3_class(plotProgramHeatmap(sce, n_genes = 5), "pheatmap")
+
     deps <- FindAllDEPs(sce, cell_type_col = "celltype")
-    expect_named(deps, sort(unique(sce$celltype)), ignore.order = TRUE)
+    expect_named(deps, c("A", "B", "C"), ignore.order = TRUE)
     expect_s3_class(plotDEPsVolcano(deps), "ggplot")
     expect_no_error(plotDEPsHeatmap(deps))
 
