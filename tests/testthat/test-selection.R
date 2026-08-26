@@ -88,3 +88,23 @@ test_that("runNMFscape chooses k when none is supplied", {
                    "Selected k =")
     expect_true(ncol(reducedDim(fit, "NMF")) %in% c(2, 4))
 })
+
+test_that("enrichPrograms recovers the gene set a program was built from", {
+    sce <- .testGuidedSCE(n_genes = 150, n_cells = 200, n_prog = 3, noise = 1)
+    fit <- runNMFscape(sce, k = 3, seed = 1, verbose = FALSE)
+    gene_sets <- split(rownames(fit),
+                       rep(c("SET_1", "SET_2", "SET_3"), each = 50))
+
+    res <- enrichPrograms(fit, gene_sets)
+    expect_true(all(c("program", "pathway", "pval", "padj", "NES", "size") %in%
+                        names(res)))
+
+    # results are sorted by program then p-value, so the first row of each
+    # program is its top hit: the gene block that program was simulated from
+    top <- res[!duplicated(res$program), ]
+    expect_setequal(top$pathway, names(gene_sets))
+    expect_true(all(top$padj < 0.05))
+
+    ora <- enrichPrograms(fit, gene_sets, method = "ora", n_top = 50)
+    expect_setequal(ora[!duplicated(ora$program), "pathway"], names(gene_sets))
+})

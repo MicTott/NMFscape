@@ -8,4 +8,4 @@ utils::globalVariables(c(
     "sd_test_error", "best_k", "program_x", "program_y",
     "similarity", "is_match", "xval", "yval",
     "mean_test_loss", "se_test_loss", "layer",
-    "combo_label"))
+    "combo_label", "pathway", "colour_by", "neg_log10_padj"))

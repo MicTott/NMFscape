@@ -8,7 +8,7 @@
 # so a newer RcppML should be checked rather than silently trusted.
 .RCPPML_TESTED <- "1.0.0"
 
-.onLoad <- function(libname, pkgname) {
+.onAttach <- function(libname, pkgname) {
     installed <- tryCatch(utils::packageVersion("RcppML"),
                           error = function(e) NULL)
     if (!is.null(installed) && installed > package_version(.RCPPML_TESTED)) {

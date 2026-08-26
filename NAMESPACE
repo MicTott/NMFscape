@@ -43,7 +43,8 @@ importFrom(ggplot2, ggplot, aes, geom_point, geom_line, geom_hline,
     scale_color_gradient, scale_size_continuous, facet_wrap, theme, theme_bw,
     theme_classic, theme_minimal, labs, element_text, element_line,
     element_blank, ggtitle, xlab, ylab, scale_color_gradientn, geom_tile,
-    scale_fill_viridis_c, geom_text, scale_fill_gradientn, coord_fixed)
+    scale_fill_viridis_c, geom_text, scale_fill_gradientn, coord_fixed,
+    scale_color_gradient2)
 
 export(runNMFscape)
 export(getBasis)
@@ -80,3 +81,5 @@ export(diagnoseNMF)
 export(gpuInfo)
 export(tuneNMF)
 export(plotTuning)
+export(enrichPrograms)
+export(plotProgramEnrichment)

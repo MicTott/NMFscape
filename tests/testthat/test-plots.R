@@ -29,3 +29,17 @@ test_that("the plotting and differential-program layer builds", {
     expect_s3_class(vizDimRed(sce, program = 1), "ggplot")
     expect_s3_class(vizUMAP(sce, program = 1), "ggplot")
 })
+
+test_that("plotProgramEnrichment shows the top gene sets per program", {
+    res <- data.frame(program = rep(c("NMF_1", "NMF_2"), each = 3),
+                      pathway = paste0("SET_", seq_len(6)),
+                      pval = 1e-3,
+                      padj = c(0.01, 0.2, 0.3, 0.02, 0.4, 0.5),
+                      size = 20L, ES = 0.5, NES = c(2, 1, -1, 2, 1, -1),
+                      leading_edge = "a,b")
+    p <- plotProgramEnrichment(res, top_n = 2)
+
+    expect_s3_class(p, "ggplot")
+    # padj_cutoff drops the non-significant sets rather than filling to top_n
+    expect_equal(nrow(p$data), 2L)
+})
