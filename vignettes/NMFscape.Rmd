@@ -17,7 +17,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  eval = FALSE
+  eval = TRUE
 )
 ```
 
@@ -95,7 +95,7 @@ NMFscape provides a Bioconductor integration layer for [RcppML](https://github.c
 
 # Quick Start
 
-```{r quickstart}
+```{r quickstart, eval = FALSE}
 library(NMFscape)
 library(scuttle)
 library(scRNAseq)
@@ -115,6 +115,6 @@ getTopFeatures(sce, n = 5)
 
 # Session Information
 
-```{r session-info, eval = TRUE}
+```{r session-info}
 sessionInfo()
 ```

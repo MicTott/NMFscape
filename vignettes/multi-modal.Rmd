@@ -18,27 +18,20 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.width = 10,
-  fig.height = 6,
-  eval = FALSE
+  fig.height = 6
 )
 ```
-
-*Note: This vignette contains code that downloads datasets and runs
-computationally intensive analyses. Set `eval = TRUE` or run chunks
-interactively to execute.*
 
 # Introduction
 
 Multi-modal single-cell assays (10x Multiome, CITE-seq, SHARE-seq) measure multiple data types from the same cells. NMFscape's `runMultiModalNMF()` performs joint NMF across modalities, learning a **shared cell embedding** while allowing each modality to have its own **feature loadings**. This finds programs that are consistent across data types.
 
-This vignette demonstrates the approach using simulated multi-modal data from the Zeisel brain dataset. In practice, you would use real multiome data (e.g., RNA + ATAC from 10x Multiome).
+This vignette demonstrates the approach on simulated multiome-like data. In
+practice you would use real multiome data (e.g. RNA + ATAC from 10x Multiome).
 
 ```{r load-packages, message=FALSE}
 library(NMFscape)
 library(SingleCellExperiment)
-library(scuttle)
-library(scater)
-library(scRNAseq)
 library(ggplot2)
 
 set.seed(427)
@@ -46,33 +39,50 @@ set.seed(427)
 
 # Setting Up Multi-Modal Data
 
-We simulate a second modality by selecting a subset of genes and adding noise, stored as an `altExp` in the SCE. In real data, this would be chromatin accessibility peaks, surface protein levels, etc.
+We generate both modalities from one shared cell embedding, which is exactly
+the model `runMultiModalNMF()` fits: a shared H across modalities, and a
+separate W per modality. Six programs drive 400 genes and 250 peaks across
+400 cells.
 
 ```{r prepare-data}
-sce <- ZeiselBrainData()
-sce <- sce[!grepl("^mt-", rownames(sce)), ]
-sce <- logNormCounts(sce)
-sce <- runPCA(sce, ncomponents = 20)
-sce <- runUMAP(sce, dimred = "PCA")
+k_true <- 6
+n_cells <- 400
+n_genes <- 400
+n_peaks <- 250
 
-# Simulate a second modality (e.g., "ATAC-like")
-# Use a random subset of genes with added noise
-set.seed(123)
-atac_genes <- sample(rownames(sce), 500)
-atac_mat <- as.matrix(assay(sce, "logcounts")[atac_genes, ])
-atac_mat <- atac_mat + abs(matrix(rnorm(length(atac_mat), sd = 0.5),
-                                  nrow = nrow(atac_mat)))
+# one shared embedding, used by both modalities
+H_shared <- matrix(runif(k_true * n_cells, 0, 1)^3, k_true, n_cells)
+cell_program <- apply(H_shared, 2, which.max)
 
-atac_sce <- SingleCellExperiment(list(counts = atac_mat))
-rownames(atac_sce) <- paste0("peak_", seq_len(nrow(atac_mat)))
-colnames(atac_sce) <- colnames(sce)
-altExp(sce, "ATAC") <- atac_sce
+make_modality <- function(n_features, sd_noise) {
+    W <- matrix(runif(n_features * k_true, 0, 0.2), n_features, k_true)
+    block <- split(seq_len(n_features),
+                   rep(seq_len(k_true), length.out = n_features))
+    for (j in seq_len(k_true)) W[block[[j]], j] <- runif(length(block[[j]]), 1, 3)
+    mat <- W %*% H_shared
+    mat <- mat + abs(matrix(rnorm(length(mat), sd = sd_noise), nrow = n_features))
+    log1p(mat / max(mat) * 100)
+}
+
+rna_mat <- make_modality(n_genes, 0.05)
+rownames(rna_mat) <- sprintf("Gene_%04d", seq_len(n_genes))
+colnames(rna_mat) <- sprintf("Cell_%03d", seq_len(n_cells))
+
+atac_mat <- make_modality(n_peaks, 0.10)
+rownames(atac_mat) <- sprintf("peak_%04d", seq_len(n_peaks))
+colnames(atac_mat) <- colnames(rna_mat)
+
+sce <- SingleCellExperiment(list(logcounts = rna_mat))
+sce$program <- paste0("P", cell_program)
+altExp(sce, "ATAC") <- SingleCellExperiment(list(counts = atac_mat))
+
+sce
 ```
 
 The SCE now has two modalities:
 
-- **Main assay** ("logcounts"): the full gene set
-- **altExp "ATAC"**: 500 simulated peaks
+- **Main assay** ("logcounts"): 400 genes
+- **altExp "ATAC"**: 250 peaks
 
 Both share the same cells.
 
@@ -81,27 +91,33 @@ Both share the same cells.
 `runMultiModalNMF()` accepts modalities via the `alt_exps` parameter. Use `"main"` to refer to the primary SCE assay:
 
 ```{r run-multimodal}
-sce <- runMultiModalNMF(sce, k = 8,
+sce <- runMultiModalNMF(sce, k = k_true,
                         alt_exps = c("main", "ATAC"),
                         main_assay = "logcounts",
                         alt_assay = "counts",
                         modality_names = c("RNA", "ATAC"),
-                        verbose = FALSE)
+                        seed = 1, verbose = FALSE)
 ```
 
 # Shared Cell Embedding
 
 The shared H matrix captures cell identity using information from both modalities:
 
-```{r shared-embedding, fig.width=12, fig.height=5}
-p1 <- plotReducedDim(sce, dimred = "UMAP", colour_by = "level1class",
-                     point_size = 0.8) +
-    ggtitle("Cell Types (UMAP)")
+```{r shared-embedding}
+shared <- reducedDim(sce, "MultiNMF")
+dim(shared)
 
-# Also run single-modality NMF for comparison
-sce <- runNMFscape(sce, k = 8, name = "NMF_RNA", verbose = FALSE)
+# the shared embedding recovers the simulated programs
+table(truth = sce$program,
+      recovered = paste0("R", apply(shared, 1, which.max)))
+```
 
-p1
+For comparison, a single-modality fit on RNA alone:
+
+```{r single-modality}
+sce <- runNMFscape(sce, k = k_true, name = "NMF_RNA", seed = 1,
+                   verbose = FALSE)
+dim(reducedDim(sce, "NMF_RNA"))
 ```
 
 # Per-Modality Feature Loadings
@@ -135,7 +151,7 @@ top_atac[[1]]
 The shared embedding can be visualized the same way as standard NMF:
 
 ```{r dotplot, fig.width=6, fig.height=5}
-plotProgramDots(sce, group = "level1class", nmf_name = "MultiNMF")
+plotProgramDots(sce, group = "program", nmf_name = "MultiNMF")
 ```
 
 # When to Use Multi-Modal NMF
@@ -149,10 +165,14 @@ Real use cases for `runMultiModalNMF()`:
 
 The key advantage over running NMF separately on each modality is that the shared embedding enforces consistency --- programs must explain variation in *both* data types, filtering out modality-specific technical noise.
 
+Note that multi-modal results are stored as a `factor_net_result`, so
+`getBasis()` requires a `modality` and `predictNMF()` does not apply; see
+`?getBasis` and `?predictNMF`.
+
 **Note:** This vignette used simulated data for illustration. With real multiome data, the multi-modal embedding typically outperforms single-modality NMF for cell type separation and reveals regulatory relationships between gene expression and chromatin state.
 
 # Session Information
 
-```{r session-info, eval = TRUE}
+```{r session-info}
 sessionInfo()
 ```

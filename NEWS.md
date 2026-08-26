@@ -33,6 +33,23 @@
 * The data frame behind `plotProgramDots()` renames `sumWeight` to
   `meanWeight`.
 
+## Vignettes
+
+* All seven vignettes now execute at build time. Six previously set
+  `eval = FALSE` globally, so none of the documented workflows were verified
+  by the build -- which is how the `L1`/`L2`, `distribution = "auto"` and
+  deep-NMF bugs above went unnoticed.
+* The mechanics vignettes (*Choosing k*, *Deep NMF*, *Multi-Modal NMF*,
+  *Transfer Learning*) now use simulated data with known structure instead of
+  ExperimentHub downloads. They build in seconds, need no network, and can
+  show recovery against ground truth: `selectRank()` finds the true rank, deep
+  NMF recovers the simulated hierarchy one-to-one, and projection maps each
+  query cell type onto the matching reference program.
+* The interpretation vignettes (*Getting Started*, *Discovering Cell Type
+  Programs*) keep the real Zeisel and Tasic datasets.
+* Fixed duplicate chunk labels in the cell-type vignette, which `eval = FALSE`
+  had been masking.
+
 ## Tests
 
 * Test suite expanded from 115 to 198. New regression coverage for character

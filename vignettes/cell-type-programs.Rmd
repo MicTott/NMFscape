@@ -18,14 +18,9 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.width = 10,
-  fig.height = 6,
-  eval = FALSE
+  fig.height = 6
 )
 ```
-
-*Note: This vignette contains code that downloads datasets and runs
-computationally intensive analyses. Set `eval = TRUE` or run chunks
-interactively to execute.*
 
 # Introduction
 
@@ -175,13 +170,13 @@ data.frame(
 
 Refinement should improve all metrics, particularly for cell types that were partially mixed in the original embedding. This improves moderately for `broad_type` labels, where most programs were already well-separated Now let's try this for`"primary_type` labels, where there was more overlap is NMF patterns. 
 
-```{r refine}
+```{r refine-2}
 sce <- refineNMF(sce, label_col = "primary_type", verbose = FALSE)
 ```
 
 ## Comparing before and after refinement
 
-```{r assess-comparison}
+```{r assess-comparison-2}
 # Assess original NMF
 original <- assessNMF(sce, name = "NMF", label_col = "primary_type",
                       min_class_size = 5)
@@ -203,7 +198,7 @@ data.frame(
 
 Refining the NMF embeddings substantially improved all metrics for the finer resolution labels. This indicates that the refined programs are much more specific to the known subtypes. We can visually confirm this by plotting the refined programs again.
 
-```{r dotplot-fine, fig.width=15, fig.height=10}
+```{r dotplot-fine-2, fig.width=15, fig.height=10}
 
 p1 <- plotProgramDots(sce, group = "primary_type", nmf_name="NMF")
 
@@ -214,6 +209,6 @@ p1 + p2
 
 # Session Information
 
-```{r session-info, eval = TRUE}
+```{r session-info}
 sessionInfo()
 ```

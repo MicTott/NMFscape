@@ -18,27 +18,24 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.width = 10,
-  fig.height = 6,
-  eval = FALSE
+  fig.height = 6
 )
 ```
-
-*Note: This vignette contains code that downloads datasets and runs
-computationally intensive analyses. Set `eval = TRUE` or run chunks
-interactively to execute.*
 
 # Introduction
 
 A common workflow in single-cell genomics is to train a reference model on a well-annotated dataset and project new (query) data onto it. NMFscape supports this via `predictNMF()` for reference mapping and `runConditionedNMF()` for batch-corrected factorization when combining datasets.
 
-This vignette demonstrates both approaches using two mouse brain datasets: the Zeisel cortex/hippocampus atlas as the reference and the Tasic visual cortex dataset as the query.
+This vignette demonstrates both approaches on two simulated datasets that
+share cell types but differ in composition and technical offset --- the
+situation reference mapping is meant to handle. Everything shown works
+unchanged on real data; see the *Discovering Cell Type Programs* vignette for
+a worked example on brain snRNA-seq.
 
 ```{r load-packages, message=FALSE}
 library(NMFscape)
 library(SingleCellExperiment)
 library(scuttle)
-library(scater)
-library(scRNAseq)
 library(ggplot2)
 library(patchwork)
 
@@ -47,22 +44,47 @@ set.seed(427)
 
 # Prepare Reference and Query
 
-```{r prepare-reference}
-# Reference: Zeisel brain (~3k cells, broad cell types)
-ref <- ZeiselBrainData()
-ref <- ref[!grepl("^mt-", rownames(ref)), ]
-ref <- logNormCounts(ref)
-ref <- runPCA(ref, ncomponents = 20)
-ref <- runUMAP(ref, dimred = "PCA")
-```
+Both datasets are built from the same six cell-type programs over the same
+gene set, but with different cell-type proportions and a batch-specific gain,
+so they overlap biologically while differing technically.
 
-```{r prepare-query}
-# Query: Tasic visual cortex (~1.8k cells, detailed subtypes)
-query <- TasicBrainData()
-query <- query[, query$broad_type != "Unclassified"]
-query <- logNormCounts(query)
-query <- runPCA(query, ncomponents = 20)
-query <- runUMAP(query, dimred = "PCA")
+```{r simulate}
+k_true <- 6
+n_genes <- 400
+gene_ids <- sprintf("Gene_%04d", seq_len(n_genes))
+
+# shared program definitions: each program drives a block of genes
+W_true <- matrix(runif(n_genes * k_true, 0, 0.2), n_genes, k_true)
+blocks <- split(seq_len(n_genes), rep(seq_len(k_true), length.out = n_genes))
+for (j in seq_len(k_true)) {
+    W_true[blocks[[j]], j] <- runif(length(blocks[[j]]), 1, 3)
+}
+
+make_dataset <- function(n_cells, proportions, batch_gain, prefix) {
+    types <- sample(seq_len(k_true), n_cells, replace = TRUE,
+                    prob = proportions)
+    H <- matrix(runif(k_true * n_cells, 0, 0.15), k_true, n_cells)
+    H[cbind(types, seq_len(n_cells))] <- runif(n_cells, 1, 3)
+
+    mat <- (W_true * batch_gain) %*% H
+    mat <- mat * exp(rnorm(length(mat), 0, 0.15))
+    mat <- log1p(mat / max(mat) * 100)
+    dimnames(mat) <- list(gene_ids, sprintf("%s_%03d", prefix,
+                                            seq_len(n_cells)))
+
+    sce <- SingleCellExperiment(list(logcounts = mat))
+    sce$celltype <- paste0("Type_", types)
+    sce
+}
+
+# reference: all six types, roughly balanced
+ref <- make_dataset(500, rep(1, k_true), 1.0, "ref")
+
+# query: same types, skewed composition and a different technical gain
+query <- make_dataset(300, c(3, 3, 2, 1, 1, 1), 1.6, "qry")
+
+ref
+query
 ```
 
 # Build Reference NMF Model
@@ -70,12 +92,12 @@ query <- runUMAP(query, dimred = "PCA")
 Train NMF on the reference dataset:
 
 ```{r train-reference}
-ref <- runNMFscape(ref, k = 10, verbose = FALSE)
+ref <- runNMFscape(ref, k = k_true, seed = 1, verbose = FALSE)
 ```
 
 ```{r show-reference, fig.width=6, fig.height=5}
-plotProgramDots(ref, group = "level1class") +
-    ggtitle("Reference: Zeisel Program Usage")
+plotProgramDots(ref, group = "celltype") +
+    ggtitle("Reference: Program Usage")
 ```
 
 # Project Query Data
@@ -93,8 +115,17 @@ dim(reducedDim(query, "NMF_projected"))
 ```
 
 ```{r projected-dotplot, fig.width=6, fig.height=5}
-plotProgramDots(query, group = "broad_type", nmf_name = "NMF_projected") +
-    ggtitle("Query: Tasic Projected onto Zeisel Model")
+plotProgramDots(query, group = "celltype", nmf_name = "NMF_projected") +
+    ggtitle("Query: Projected onto Reference Model")
+```
+
+Because the two datasets share program definitions, each query cell type
+should light up the same reference program its counterpart does:
+
+```{r projection-recovery}
+projected <- reducedDim(query, "NMF_projected")
+table(truth = query$celltype,
+      program = paste0("NMF_", apply(projected, 1, which.max)))
 ```
 
 ## Compare to de novo NMF
@@ -102,15 +133,16 @@ plotProgramDots(query, group = "broad_type", nmf_name = "NMF_projected") +
 We can also run NMF directly on the query and compare:
 
 ```{r denovo}
-query <- runNMFscape(query, k = 10, name = "NMF_denovo", verbose = FALSE)
+query <- runNMFscape(query, k = k_true, name = "NMF_denovo", seed = 1,
+                     verbose = FALSE)
 ```
 
 ```{r compare-approaches, fig.width=14, fig.height=5}
-p1 <- plotProgramDots(query, group = "broad_type",
+p1 <- plotProgramDots(query, group = "celltype",
                       nmf_name = "NMF_projected") +
     ggtitle("Projected from Reference")
 
-p2 <- plotProgramDots(query, group = "broad_type",
+p2 <- plotProgramDots(query, group = "celltype",
                       nmf_name = "NMF_denovo") +
     ggtitle("De Novo on Query")
 
@@ -124,30 +156,36 @@ Projection maps the query into the same program space as the reference, making t
 When combining datasets for joint analysis, batch effects can dominate the factorization. `runConditionedNMF()` conditions out a batch variable during NMF so that programs capture biology rather than technical variation.
 
 ```{r combine-datasets}
-# Find shared genes
 shared_genes <- intersect(rownames(ref), rownames(query))
 
-# Subset and combine
 ref_sub <- ref[shared_genes, ]
 query_sub <- query[shared_genes, ]
 
-# Add dataset labels
-ref_sub$dataset <- "Zeisel"
-query_sub$dataset <- "Tasic"
+ref_sub$dataset <- "reference"
+query_sub$dataset <- "query"
 
-# Combine into one SCE
+# keep only the shared colData columns before binding
+keep <- c("celltype", "dataset")
+colData(ref_sub) <- colData(ref_sub)[, keep]
+colData(query_sub) <- colData(query_sub)[, keep]
+reducedDims(ref_sub) <- list()
+reducedDims(query_sub) <- list()
+metadata(ref_sub) <- list()
+metadata(query_sub) <- list()
+
 combined <- cbind(ref_sub, query_sub)
-combined <- logNormCounts(combined)
+combined
 ```
 
 ```{r conditioned-nmf}
 # Standard NMF (no batch correction)
-combined <- runNMFscape(combined, k = 10, name = "NMF_uncorrected",
-                        verbose = FALSE)
+combined <- runNMFscape(combined, k = k_true, name = "NMF_uncorrected",
+                        seed = 1, verbose = FALSE)
 
 # Batch-conditioned NMF
-combined <- runConditionedNMF(combined, k = 10, condition_col = "dataset",
-                              verbose = FALSE)
+combined <- runConditionedNMF(combined, k = k_true,
+                              condition_col = "dataset",
+                              seed = 1, verbose = FALSE)
 ```
 
 ```{r compare-batch, fig.width=14, fig.height=5}
@@ -188,6 +226,6 @@ For large-scale atlas integration, consider running `runConditionedNMF()` on the
 
 # Session Information
 
-```{r session-info, eval = TRUE}
+```{r session-info}
 sessionInfo()
 ```

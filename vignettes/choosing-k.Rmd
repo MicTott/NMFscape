@@ -18,14 +18,9 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.width = 8,
-  fig.height = 5,
-  eval = FALSE
+  fig.height = 5
 )
 ```
-
-*Note: This vignette contains code that downloads datasets and runs
-computationally intensive analyses. Set `eval = TRUE` or run chunks
-interactively to execute.*
 
 # Introduction
 
@@ -34,9 +29,7 @@ The number of NMF programs (k) is the most important parameter in any NMF analys
 ```{r load-packages, message=FALSE}
 library(NMFscape)
 library(SingleCellExperiment)
-library(scuttle)
-library(scater)
-library(scRNAseq)
+library(RcppML)
 library(ggplot2)
 
 set.seed(427)
@@ -44,12 +37,25 @@ set.seed(427)
 
 ## Prepare data
 
-We use the Zeisel brain dataset with ~3,000 cells across 7 major cell types.
+Rank selection is easiest to judge when the answer is known, so this vignette
+uses `RcppML::simulateNMF()` to generate a matrix with exactly six underlying
+programs. Everything shown here applies unchanged to a real
+`SingleCellExperiment`; see the *Discovering Cell Type Programs* vignette for
+a worked example on brain snRNA-seq data.
 
 ```{r prepare-data}
-sce <- ZeiselBrainData()
-sce <- sce[!grepl("^mt-", rownames(sce)), ]
-sce <- logNormCounts(sce)
+sim <- simulateNMF(nrow = 400, ncol = 600, k = 6, noise = 0.3, seed = 427)
+
+counts_mat <- sim$A / max(sim$A) * 10
+rownames(counts_mat) <- sprintf("Gene_%03d", seq_len(nrow(counts_mat)))
+colnames(counts_mat) <- sprintf("Cell_%03d", seq_len(ncol(counts_mat)))
+
+sce <- SingleCellExperiment(list(logcounts = counts_mat))
+
+# a ground-truth grouping: each cell is labelled by its dominant program
+sce$program <- paste0("P", apply(sim$h, 2, which.max))
+
+sce
 ```
 
 # Choosing the Right Distribution
@@ -59,7 +65,7 @@ Before selecting k, consider which loss function is appropriate for your data. N
 `selectDistribution()` compares multiple loss functions and recommends the best one based on BIC:
 
 ```{r select-distribution}
-dist_result <- selectDistribution(sce, k = 10, verbose = FALSE)
+dist_result <- selectDistribution(sce, k = 6, verbose = FALSE)
 
 # Best distribution
 dist_result$best
@@ -75,9 +81,16 @@ For log-normalized data, MSE is typically the best choice. For raw counts, Poiss
 `selectRank()` uses held-out cross-validation: a fraction of matrix entries are masked during training, then reconstruction error is evaluated on the masked entries. The optimal k minimizes test error.
 
 ```{r cross-validation}
-cv_results <- selectRank(sce, k = seq(2, 20, by = 2),
-                         test_fraction = 0.2, verbose = FALSE)
+cv_results <- selectRank(sce, k = 2:12, test_fraction = 0.2,
+                         seed = 1, verbose = FALSE)
 cv_results
+```
+
+Test error falls steeply up to the true rank and then creeps back up as extra
+programs start fitting noise:
+
+```{r cv-best}
+cv_results$k[which.min(cv_results$test_error)]
 ```
 
 Visualize the results as an elbow plot. The dashed red line marks the rank with lowest test error:
@@ -89,9 +102,8 @@ plotRankSelection(cv_results)
 For more robust estimates, run multiple replicates:
 
 ```{r cv-replicates}
-cv_reps <- selectRank(sce, k = seq(2, 20, by = 2),
-                      test_fraction = 0.2, n_reps = 3,
-                      seed = 42, verbose = FALSE)
+cv_reps <- selectRank(sce, k = 2:12, test_fraction = 0.2,
+                      n_reps = 3, seed = 42, verbose = FALSE)
 
 # Error bars show standard deviation across replicates
 plotRankSelection(cv_reps)
@@ -102,13 +114,13 @@ plotRankSelection(cv_reps)
 Another approach is to check how stable the factorization is across random initializations. `consensusNMF()` runs NMF multiple times and measures agreement via the cophenetic correlation coefficient. Higher values indicate more stable, reproducible factorizations.
 
 ```{r consensus, message=FALSE}
-# Test stability at k = 5, 10, 15
-cophenetic_scores <- vapply(c(5, 10, 15), function(ki) {
+ranks <- c(4, 6, 8)
+cophenetic_scores <- vapply(ranks, function(ki) {
     sce_tmp <- consensusNMF(sce, k = ki, n_runs = 10, verbose = FALSE)
     metadata(sce_tmp)$cNMF_consensus$cophenetic
 }, numeric(1))
 
-data.frame(k = c(5, 10, 15), cophenetic = round(cophenetic_scores, 4))
+data.frame(k = ranks, cophenetic = round(cophenetic_scores, 4))
 ```
 
 A cophenetic score close to 1 indicates high stability. A sharp drop suggests the factorization is becoming unstable at that rank.
@@ -118,9 +130,9 @@ A cophenetic score close to 1 indicates high stability. A sharp drop suggests th
 When cell type annotations are available, `assessNMF()` evaluates how well the NMF embedding separates known groups using clustering metrics (ARI, NMI, silhouette) and cross-validated classification accuracy.
 
 ```{r assess-labels}
-sce <- runNMFscape(sce, k = 10, verbose = FALSE)
+sce <- runNMFscape(sce, k = 6, verbose = FALSE)
 
-assessment <- assessNMF(sce, label_col = "level1class", min_class_size = 5)
+assessment <- assessNMF(sce, label_col = "program", min_class_size = 5)
 
 # Key metrics
 data.frame(
@@ -164,8 +176,16 @@ In practice, we recommend:
 
 For most single-cell brain datasets, k between 10--30 works well. Larger, more heterogeneous datasets may need higher k.
 
+Note that `selectRank()` and `selectDistribution()` accept `subset_row`, which
+is usually where you pass highly variable genes:
+
+```{r subset-row}
+hvgs <- rownames(sce)[seq_len(200)]
+head(selectRank(sce, k = 4:8, subset_row = hvgs, seed = 1, verbose = FALSE))
+```
+
 # Session Information
 
-```{r session-info, eval = TRUE}
+```{r session-info}
 sessionInfo()
 ```
