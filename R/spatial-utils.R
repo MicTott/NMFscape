@@ -235,7 +235,16 @@
     w_mat <- normalized$w
     h_mat <- normalized$h
 
-    residual0 <- sum((a_mat - w_mat %*% h_mat)^2)
+    # ||A - WH||_F^2 expanded so the dense g x n residual is never formed;
+    # on real spatial data A is sparse and materializing it would dominate
+    # both memory and runtime.
+    a_norm <- sum(a_mat^2)
+    residual <- function(w, h) {
+        a_norm - 2 * sum(as.matrix(crossprod(w, a_mat)) * h) +
+            sum(crossprod(w) * tcrossprod(h))
+    }
+
+    residual0 <- residual(w_mat, h_mat)
     anchor <- residual0 / 10
     if (!is.null(h_parts)) {
         graph_lambda <- graph_lambda * anchor /
@@ -247,7 +256,7 @@
     }
 
     objective <- function(w, h) {
-        value <- sum((a_mat - w %*% h)^2)
+        value <- residual(w, h)
         if (!is.null(h_parts)) {
             value <- value + graph_lambda * .graphPenalty(h, h_parts)
         }

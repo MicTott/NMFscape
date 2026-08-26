@@ -239,7 +239,7 @@ runSpatialNMF <- function(x, k, graph = c("knn", "delaunay", "distance"),
         # factors on comparable scales.
         sqrt_d <- sqrt(nmf_result@d)
         refinement <- .gnmfRefine(
-            a_mat = as.matrix(mat),
+            a_mat = mat,
             w_mat = nmf_result@w %*% diag(sqrt_d, nrow = k),
             h_mat = diag(sqrt_d, nrow = k) %*% nmf_result@h,
             h_parts = h_parts, w_parts = w_parts,
