@@ -93,6 +93,7 @@ runFactorNet <- function(x, result, layer_name, name = "FactorNet",
         metadata(x)[[paste0(name, "_basis")]] <- named$basis
     }
 
+    metadata(x)[[paste0(name, "_layer")]] <- layer_name
     metadata(x)[[paste0(name, "_model")]] <- result
 
     if (verbose) {

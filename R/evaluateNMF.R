@@ -10,6 +10,10 @@
 #'
 #' @return Numeric scalar, the reconstruction loss (lower is better)
 #'
+#' @seealso \code{\link{getModel}} for which functions store an S4
+#'   \code{nmf} model. FactorNet-based results are not supported here;
+#'   use their stored \code{$total_loss} instead.
+#'
 #' @examples
 #' library(scuttle)
 #' sce <- mockSCE(ngenes = 100, ncells = 50)
@@ -30,6 +34,16 @@ evaluateNMF <- function(x, name = "NMF", assay = "logcounts") {
     }
 
     model <- getModel(x, name)
+
+    if (.isFactorNet(model)) {
+        stop("evaluateNMF() requires an S4 nmf model, but '", name,
+             "' was produced by a FactorNet recipe (runDeepNMF, ",
+             "runMultiModalNMF, runConditionedNMF or runFactorNet). ",
+             "The fitted loss for such models is available as ",
+             "metadata(x)[['", name, "_model']]$total_loss, and per-layer ",
+             "losses via $layers.")
+    }
+
     mat <- assay(x, assay)
 
     if (any(mat < 0)) {

@@ -12,13 +12,23 @@ getModel(x, name = "NMF")
 \item{name}{Character, name of the NMF result (default "NMF")}
 }
 \value{
-An S4 object of class \code{nmf} from RcppML with slots
-  \code{@w}, \code{@d}, \code{@h}, \code{@misc}
+Either an S4 \code{nmf} object with slots \code{@w}, \code{@d},
+  \code{@h}, \code{@misc}, or a \code{factor_net_result} list whose
+  \code{$layers} element holds per-layer \code{W}, \code{d} and \code{H}
 }
 \description{
-Returns the raw RcppML S4 nmf model object stored by \code{\link{runNMFscape}}.
+Returns the raw model object stored by \code{\link{runNMFscape}} and friends.
 Useful for passing to RcppML functions like \code{predict},
 \code{refine}, \code{align}, etc.
+}
+\details{
+The class depends on which function produced the result.
+\code{\link{runNMFscape}}, \code{\link{consensusNMF}} and
+\code{\link{refineNMF}} store an S4 \code{nmf}; the FactorNet recipes
+(\code{\link{runDeepNMF}}, \code{\link{runMultiModalNMF}},
+\code{\link{runConditionedNMF}}, \code{\link{runFactorNet}}) store a
+\code{factor_net_result}, which is a list of layers rather than an S4
+object and so does not support \code{@w} / \code{@h} access.
 }
 \examples{
 library(scuttle)

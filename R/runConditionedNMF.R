@@ -121,6 +121,7 @@ runConditionedNMF <- function(x, k, condition_col, assay = "logcounts",
     # Store
     reducedDim(x, name) <- named$coeff
     metadata(x)[[paste0(name, "_basis")]] <- named$basis
+    metadata(x)[[paste0(name, "_layer")]] <- "nmf"
     metadata(x)[[paste0(name, "_model")]] <- result
     metadata(x)[[paste0(name, "_condition")]] <- list(
         col = condition_col, Z = Z

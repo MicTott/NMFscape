@@ -131,7 +131,11 @@ reconstructNMF <- function(x, name = "NMF") {
     model_name <- paste0(name, "_model")
     if (model_name %in% names(metadata(x))) {
         model <- metadata(x)[[model_name]]
-        return(model@w %*% diag(model@d, nrow = length(model@d)) %*% model@h)
+        if (!.isFactorNet(model)) {
+            return(model@w %*% diag(model@d, nrow = length(model@d)) %*% model@h)
+        }
+        # FactorNet layers do not reconstruct the input on their own; the
+        # effective basis and embedding do, exactly when absorb_d was TRUE.
     }
     basis <- getBasis(x, name)
     coeffs <- getCoefficients(x, name)
@@ -140,15 +144,24 @@ reconstructNMF <- function(x, name = "NMF") {
 
 #' Extract raw RcppML NMF model from SingleCellExperiment object
 #'
-#' Returns the raw RcppML S4 nmf model object stored by \code{\link{runNMFscape}}.
+#' Returns the raw model object stored by \code{\link{runNMFscape}} and friends.
 #' Useful for passing to RcppML functions like \code{predict},
 #' \code{refine}, \code{align}, etc.
+#'
+#' The class depends on which function produced the result.
+#' \code{\link{runNMFscape}}, \code{\link{consensusNMF}} and
+#' \code{\link{refineNMF}} store an S4 \code{nmf}; the FactorNet recipes
+#' (\code{\link{runDeepNMF}}, \code{\link{runMultiModalNMF}},
+#' \code{\link{runConditionedNMF}}, \code{\link{runFactorNet}}) store a
+#' \code{factor_net_result}, which is a list of layers rather than an S4
+#' object and so does not support \code{@@w} / \code{@@h} access.
 #'
 #' @param x A SingleCellExperiment object with NMF results
 #' @param name Character, name of the NMF result (default "NMF")
 #'
-#' @return An S4 object of class \code{nmf} from RcppML with slots
-#'   \code{@@w}, \code{@@d}, \code{@@h}, \code{@@misc}
+#' @return Either an S4 \code{nmf} object with slots \code{@@w}, \code{@@d},
+#'   \code{@@h}, \code{@@misc}, or a \code{factor_net_result} list whose
+#'   \code{$layers} element holds per-layer \code{W}, \code{d} and \code{H}
 #' @export
 #' @examples
 #' library(scuttle)
@@ -186,5 +199,14 @@ getModel <- function(x, name = "NMF") {
 #' getDiagonal(sce)
 getDiagonal <- function(x, name = "NMF") {
     model <- getModel(x, name)
+    if (.isFactorNet(model)) {
+        layer_name <- .primaryLayer(x, name)
+        if (is.null(layer_name) || !layer_name %in% names(model$layers)) {
+            stop("Cannot locate the primary layer for FactorNet result '",
+                 name, "'. Available layers: ",
+                 paste(names(model$layers), collapse = ", "))
+        }
+        return(model$layers[[layer_name]]$d)
+    }
     model@d
 }

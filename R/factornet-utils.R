@@ -70,3 +70,18 @@
     }
     invisible(value)
 }
+
+.isFactorNet <- function(model) {
+    is(model, "factor_net_result") ||
+        (is.list(model) && !is.null(model$layers))
+}
+
+# The layer a FactorNet wrapper treats as its primary output, recorded at
+# write time so accessors can find W/d/H without knowing which recipe ran.
+.primaryLayer <- function(x, name) {
+    key <- paste0(name, "_layer")
+    if (!key %in% names(metadata(x))) {
+        return(NULL)
+    }
+    metadata(x)[[key]]
+}

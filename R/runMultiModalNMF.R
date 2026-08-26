@@ -217,6 +217,7 @@ runMultiModalNMF <- function(x, k, assays = NULL, alt_exps = NULL,
     }
 
     metadata(x)[[paste0(name, "_modalities")]] <- modality_names
+    metadata(x)[[paste0(name, "_layer")]] <- "shared_nmf"
     metadata(x)[[paste0(name, "_model")]] <- result
 
     if (verbose) {

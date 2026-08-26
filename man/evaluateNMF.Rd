@@ -29,3 +29,8 @@ sce <- runNMFscape(sce, k = 5, verbose = FALSE)
 evaluateNMF(sce)
 
 }
+\seealso{
+\code{\link{getModel}} for which functions store an S4
+  \code{nmf} model. FactorNet-based results are not supported here;
+  use their stored \code{$total_loss} instead.
+}

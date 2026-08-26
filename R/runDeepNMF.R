@@ -183,6 +183,7 @@ runDeepNMF <- function(x, k, assay = "logcounts", name = "DeepNMF",
     reducedDim(x, name) <- named$coeff
     metadata(x)[[paste0(name, "_basis")]] <- named$basis
     metadata(x)[[paste0(name, "_layers")]] <- layer_data
+    metadata(x)[[paste0(name, "_layer")]] <- paste0("layer_", n_layers)
     metadata(x)[[paste0(name, "_model")]] <- result
 
     if (verbose) {

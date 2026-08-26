@@ -19,7 +19,10 @@ predictNMF(
 \item{new_data}{A SingleCellExperiment or SpatialExperiment with new samples}
 
 \item{reference}{Either a SingleCellExperiment containing a stored NMF model
-(from \code{\link{runNMFscape}}), or a raw RcppML \code{nmf} S4 object}
+(from \code{\link{runNMFscape}} or one of the FactorNet recipes), a raw
+RcppML \code{nmf} S4 object, or a fitted \code{factor_net_result}.
+FactorNet references are projected through the whole graph and require
+\code{new_data} to contain every feature used to fit the reference.}
 
 \item{ref_name}{Character, name of the NMF result in the reference SCE
 (default "NMF"). Ignored if \code{reference} is a raw model.}
@@ -30,7 +33,8 @@ predictNMF(
 \item{assay}{Character, which assay to use from new_data (default "logcounts")}
 
 \item{absorb_d}{Logical, whether to absorb diagonal scaling into the
-projected coefficients (default TRUE)}
+projected coefficients (default TRUE). Ignored for FactorNet references,
+which return coefficients with scaling already applied.}
 
 \item{verbose}{Logical, whether to print progress (default TRUE)}
 
