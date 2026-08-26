@@ -58,6 +58,7 @@ reference:
   contents:
   - runNMFscape
   - consensusNMF
+  - programStability
 
 - title: Spatial
   desc: Graph-regularized NMF for SpatialExperiment objects
@@ -87,6 +88,13 @@ reference:
   - selectDistribution
   - evaluateNMF
   - assessNMF
+  - diagnoseNMF
+
+- title: Comparing Models
+  desc: Match programs between independently fit models
+  contents:
+  - alignPrograms
+  - plotProgramSimilarity
 
 - title: Transfer Learning
   desc: Project new data onto existing models and refine with labels
@@ -118,6 +126,16 @@ reference:
   - FindAllDEPs
   - plotDEPsVolcano
   - plotDEPsHeatmap
+
+- title: Gene Set Enrichment
+  desc: Link programs to pathways and gene sets
+  contents:
+  - enrichPrograms
+  - plotProgramEnrichment
+
+- title: Utilities
+  contents:
+  - gpuInfo
 
 
 articles:
