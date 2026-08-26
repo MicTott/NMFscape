@@ -64,7 +64,4 @@ test_that("character subset_row works across the other wrappers", {
     cond <- runConditionedNMF(sce, k = 3, condition_col = "batch",
                               subset_row = hvg, verbose = FALSE)
     expect_equal(rownames(getBasis(cond, "CondNMF")), hvg)
-
-    deep <- runDeepNMF(sce, k = c(10, 3), subset_row = hvg, verbose = FALSE)
-    expect_equal(rownames(getBasis(deep, "DeepNMF")), hvg)
 })

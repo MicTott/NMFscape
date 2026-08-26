@@ -7,7 +7,7 @@
 tuneNMF(
   x,
   params,
-  recipe = c("standard", "deep", "multimodal", "conditioned"),
+  recipe = c("standard", "multimodal", "conditioned"),
   assay = "logcounts",
   subset_row = NULL,
   reps = 3,
@@ -27,13 +27,10 @@ tuneNMF(
 \item{x}{A SingleCellExperiment or SpatialExperiment object}
 
 \item{params}{Named list of candidate parameter values passed to
-\code{\link[RcppML]{nmf_layer}}, e.g. \code{list(k = c(5, 10, 20))}. For
-\code{recipe = "deep"}, \code{params$k} must instead be a list of per-layer
-candidate grids (see "Deep recipe").}
+\code{\link[RcppML]{nmf_layer}}, e.g. \code{list(k = c(5, 10, 20))}.}
 
 \item{recipe}{Character, which graph topology to tune. One of "standard",
-"deep", "multimodal" or "conditioned". Ignored when \code{layer_fn} is
-supplied.}
+"multimodal" or "conditioned". Ignored when \code{layer_fn} is supplied.}
 
 \item{assay}{Character, which assay to use (default "logcounts"). For
 \code{recipe = "multimodal"} a character vector of two or more assay names
@@ -85,13 +82,12 @@ An object of class \code{nmfscape_tuning} (which inherits from
   \itemize{
     \item \code{summary}: data.frame of parameter combinations ranked by
       \code{mean_test_loss}, with \code{se_test_loss}, \code{mean_train_loss}
-      and \code{n_valid}. For \code{recipe = "deep"} it also has a
-      \code{layer} column.
+      and \code{n_valid}.
     \item \code{results}: per-replicate data.frame with \code{test_loss},
       \code{train_loss}, \code{iterations} and \code{converged}.
     \item \code{best_params}: named list of the winning values, shaped so it
       can be passed straight to the matching \code{run*()} function, e.g.
-      \code{do.call(runDeepNMF, c(list(x = sce), fit$best_params))}.
+      \code{do.call(runNMFscape, c(list(x = sce), fit$best_params))}.
     \item \code{recipe}, \code{params}, \code{reps}, \code{strategy},
       \code{n_fits}, \code{config}.
   }
@@ -111,8 +107,6 @@ transfer directly:
 \describe{
   \item{\code{"standard"}}{one \code{nmf_layer} on the assay matrix, as in
     \code{\link{runNMFscape}}.}
-  \item{\code{"deep"}}{a chain of \code{nmf_layer} calls, as in
-    \code{\link{runDeepNMF}}. See "Deep recipe" below.}
   \item{\code{"multimodal"}}{\code{\link[RcppML]{factor_shared}} across
     modalities feeding one \code{nmf_layer}, as in
     \code{\link{runMultiModalNMF}}.}
@@ -129,36 +123,6 @@ FactorNet layers take a \emph{scalar} \code{L1}/\code{L2} per layer, unlike
 \code{\link{runNMFscape}}, which takes a length-2 c(w, h) vector.
 }
 
-\section{Deep recipe}{
-
-\code{runDeepNMF()} takes a per-layer rank \emph{vector}, so a joint grid
-would have to range over candidate vectors. That is not possible with
-RcppML 1.0.0: multi-layer graphs diverge (training loss goes to
-\code{NaN}) when \code{test_fraction > 0}, and every layer reports
-\code{test_loss = 0}, so a joint held-out score cannot be computed. Rather
-than return meaningless numbers, \code{tuneNMF()} tunes a deep chain
-\strong{sequentially, one layer at a time}: layer 1 is cross-validated on the
-assay matrix, the winning rank is fitted without masking, and layer 2 is then
-cross-validated on the transpose of that layer's H -- exactly the matrix
-layer 2 factorizes inside \code{runDeepNMF()}. Every fit scored this way is a
-single layer, which is the case that works upstream. Accordingly,
-\code{params$k} for the deep recipe is a \emph{list of per-layer candidate
-grids}, one element per layer, e.g.
-\code{params = list(k = list(c(10, 20, 30), c(3, 5, 8)))} searches three
-ranks for layer 1 and three for layer 2. Non-\code{k} parameters are selected
-at layer 1 and then held fixed for the deeper layers, matching the scalar
-\code{L1}/\code{L2} that \code{runDeepNMF()} applies to every layer. Because
-the search is greedy rather than joint, cost is additive in the per-layer
-grid sizes rather than multiplicative.
-
-Penalties do not rescale between layers: layer 1 sees the assay matrix while
-layer 2 sees the layer above's H, which is typically orders of magnitude
-smaller. A penalty that suits layer 1 can therefore collapse a deeper layer,
-in which case \code{tuneNMF()} stops with an error naming the carried-over
-settings rather than reporting a degenerate fit. Tuning \code{k} on its own
-avoids this entirely.
-}
-
 \examples{
 library(scuttle)
 sce <- mockSCE(ngenes = 80, ncells = 60)
@@ -168,12 +132,6 @@ sce <- logNormCounts(sce)
 tuned <- tuneNMF(sce, params = list(k = c(2, 4)), reps = 2, verbose = FALSE)
 tuned$summary
 sce <- do.call(runNMFscape, c(list(x = sce), tuned$best_params))
-
-# Deep recipe: one candidate grid per layer
-deep_tuned <- tuneNMF(sce, recipe = "deep",
-                      params = list(k = list(c(6, 8), c(2, 3))),
-                      reps = 1, verbose = FALSE)
-deep_tuned$best_params$k
 
 }
 \seealso{

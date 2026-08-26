@@ -60,9 +60,11 @@ test_that("diagnoseNMF errors for FactorNet-backed results", {
     skip_if_not_installed("scuttle")
     sce <- setup_diag_sce(ngenes = 120, ncells = 60)
 
-    deep <- runDeepNMF(sce, k = c(10, 4), verbose = FALSE)
-    expect_error(diagnoseNMF(deep, name = "DeepNMF"), "FactorNet recipe")
-    expect_error(diagnoseNMF(deep, name = "DeepNMF"), "total_loss")
+    sce$batch <- rep(c("A", "B"), length.out = ncol(sce))
+    cond <- runConditionedNMF(sce, k = 4, condition_col = "batch",
+                              verbose = FALSE)
+    expect_error(diagnoseNMF(cond, name = "CondNMF"), "FactorNet recipe")
+    expect_error(diagnoseNMF(cond, name = "CondNMF"), "total_loss")
 
     sce$batch <- rep(c("A", "B"), length.out = ncol(sce))
     cond <- runConditionedNMF(sce, k = 4, condition_col = "batch",

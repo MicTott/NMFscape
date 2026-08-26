@@ -34,7 +34,6 @@ NMFscape provides high-performance non-negative matrix factorization (NMF) metho
 - `refineNMF()` - label-guided refinement, optionally batch-corrected
 
 ### Multi-layer and multi-modal (RcppML FactorNet)
-- `runDeepNMF()` - hierarchical NMF over several layers
 - `runMultiModalNMF()` - joint factorization across modalities (assays or
   altExps) through a shared cell embedding
 - `runConditionedNMF()` - factor out a batch or covariate during factorization

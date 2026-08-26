@@ -133,62 +133,6 @@ test_that("multimodal recipe accepts several assays and rejects one modality", {
     )
 })
 
-test_that("deep recipe tunes layer by layer and transfers to runDeepNMF", {
-    sce <- makeTuneSCE()
-
-    tuned <- tuneNMF(sce, recipe = "deep",
-                     params = list(k = list(c(6, 10), c(2, 3))),
-                     reps = 2, verbose = FALSE)
-
-    expect_equal(tuned$recipe, "deep")
-    expect_true("layer" %in% colnames(tuned$summary))
-    expect_setequal(unique(tuned$summary$layer), c(1, 2))
-    expect_true(all(tuned$summary$mean_test_loss > 0))
-
-    expect_length(tuned$best_params$k, 2L)
-    expect_true(is.integer(tuned$best_params$k))
-    expect_true(tuned$best_params$k[1] %in% c(6, 10))
-    expect_true(tuned$best_params$k[2] %in% c(2, 3))
-
-    out <- do.call(runDeepNMF,
-                   c(list(x = sce, verbose = FALSE), tuned$best_params))
-    expect_equal(ncol(reducedDim(out, "DeepNMF")), tuned$best_params$k[2])
-})
-
-test_that("deep recipe holds non-k parameters fixed after layer 1", {
-    sce <- makeTuneSCE()
-    tuned <- tuneNMF(sce, recipe = "deep",
-                     params = list(k = list(c(6, 8), c(2, 3)),
-                                   L2 = c(0, 0.05)),
-                     reps = 1, verbose = FALSE)
-
-    expect_length(tuned$best_params$L2, 1L)
-    expect_true(tuned$best_params$L2 %in% c(0, 0.05))
-    # layer 2 only searched k, at the layer-1 penalty
-    layer2 <- tuned$summary[tuned$summary$layer == 2, , drop = FALSE]
-    expect_equal(nrow(layer2), 2L)
-    expect_equal(unique(layer2$L2), tuned$best_params$L2)
-})
-
-test_that("deep recipe rejects grids that are not per-layer lists", {
-    sce <- makeTuneSCE()
-    expect_error(
-        tuneNMF(sce, recipe = "deep", params = list(k = c(10, 3)),
-                reps = 1, verbose = FALSE),
-        "list with one candidate grid per layer"
-    )
-    expect_error(
-        tuneNMF(sce, recipe = "deep", params = list(k = list(c(10, 5))),
-                reps = 1, verbose = FALSE),
-        "at least 2 layers"
-    )
-    expect_error(
-        tuneNMF(sce, recipe = "deep", params = list(L1 = 0),
-                reps = 1, verbose = FALSE),
-        "must include 'k'"
-    )
-})
-
 test_that("layer_fn overrides the recipe topology", {
     sce <- makeTuneSCE()
 
@@ -298,18 +242,6 @@ test_that("plotTuning falls back to a ranked dot plot for three parameters", {
     expect_true("combo_label" %in% colnames(p$data))
     expect_equal(nrow(p$data), 5L)
     expect_equal(nrow(ggplot2::ggplot_build(p)$data[[1]]), 5L)
-})
-
-test_that("plotTuning facets deep results by layer", {
-    sce <- makeTuneSCE()
-    tuned <- tuneNMF(sce, recipe = "deep",
-                     params = list(k = list(c(6, 10), c(2, 3))),
-                     reps = 1, verbose = FALSE)
-    p <- plotTuning(tuned)
-    expect_s3_class(p, "ggplot")
-    expect_true("layer" %in% colnames(p$data))
-    expect_equal(nlevels(p$data$layer), 2L)
-    expect_length(unique(ggplot2::ggplot_build(p)$data[[1]]$PANEL), 2L)
 })
 
 test_that("plotTuning rejects non-tuning input and constant grids", {

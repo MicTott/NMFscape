@@ -151,7 +151,7 @@ reconstructNMF <- function(x, name = "NMF") {
 #' The class depends on which function produced the result.
 #' \code{\link{runNMFscape}}, \code{\link{consensusNMF}} and
 #' \code{\link{refineNMF}} store an S4 \code{nmf}; the FactorNet recipes
-#' (\code{\link{runDeepNMF}}, \code{\link{runMultiModalNMF}},
+#' (\code{\link{runMultiModalNMF}},
 #' \code{\link{runConditionedNMF}}, \code{\link{runFactorNet}}) store a
 #' \code{factor_net_result}, which is a list of layers rather than an S4
 #' object and so does not support \code{@@w} / \code{@@h} access.

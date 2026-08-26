@@ -37,7 +37,7 @@ evaluateNMF <- function(x, name = "NMF", assay = "logcounts") {
 
     if (.isFactorNet(model)) {
         stop("evaluateNMF() requires an S4 nmf model, but '", name,
-             "' was produced by a FactorNet recipe (runDeepNMF, ",
+             "' was produced by a FactorNet recipe (",
              "runMultiModalNMF, runConditionedNMF or runFactorNet). ",
              "The fitted loss for such models is available as ",
              "metadata(x)[['", name, "_model']]$total_loss, and per-layer ",

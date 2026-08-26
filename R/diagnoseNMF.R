@@ -91,10 +91,10 @@ diagnoseNMF <- function(x, name = "NMF", assay = "logcounts",
 
     if (.isFactorNet(model)) {
         stop("diagnoseNMF() requires an S4 nmf model, but '", name,
-             "' was produced by a FactorNet recipe (runDeepNMF, ",
+             "' was produced by a FactorNet recipe (",
              "runMultiModalNMF, runConditionedNMF or runFactorNet). ",
              "RcppML's diagnostics take a single W and H, which a ",
-             "multi-layer graph does not have. Per-layer W, d and H are ",
+             "FactorNet graph does not have. Per-layer W, d and H are ",
              "available as metadata(x)[['", name, "_model']]$layers, and the ",
              "fitted loss as $total_loss.")
     }

@@ -34,7 +34,6 @@ NMFscape provides a Bioconductor integration layer for [RcppML](https://github.c
 | Function | Description |
 |---|---|
 | `runNMFscape()` | Standard NMF with 6 loss distributions |
-| `runDeepNMF()` | Hierarchical multi-layer NMF (FactorNet) |
 | `runMultiModalNMF()` | Joint NMF across modalities (RNA + ATAC) |
 | `runConditionedNMF()` | Batch-conditioned NMF |
 | `consensusNMF()` | Consensus NMF with stability metrics |
@@ -91,7 +90,6 @@ NMFscape provides a Bioconductor integration layer for [RcppML](https://github.c
 - **Getting Started**: Basic NMF workflow on mouse brain data. `vignette("getting-started")`
 - **Choosing k**: Rank selection via cross-validation, distribution selection, and consensus stability. `vignette("choosing-k")`
 - **Cell Type Programs**: Biological interpretation and label-guided refinement. `vignette("cell-type-programs")`
-- **Deep NMF**: Hierarchical gene programs via multi-layer factorization. `vignette("deep-nmf")`
 - **Multi-Modal NMF**: Joint RNA + chromatin factorization. `vignette("multi-modal")`
 - **Transfer Learning**: Reference mapping and batch correction. `vignette("transfer-learning")`
 

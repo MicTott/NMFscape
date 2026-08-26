@@ -15,11 +15,6 @@ test_that("L1 changes the factorization in FactorNet wrappers", {
                              seed = 1, L1 = 0.5, verbose = FALSE)
     expect_false(identical(getBasis(plain, "CondNMF"),
                            getBasis(pen, "CondNMF")))
-
-    d_plain <- runDeepNMF(sce, k = c(10, 4), seed = 1, L1 = 0, verbose = FALSE)
-    d_pen <- runDeepNMF(sce, k = c(10, 4), seed = 1, L1 = 0.5, verbose = FALSE)
-    expect_false(identical(getBasis(d_plain, "DeepNMF"),
-                           getBasis(d_pen, "DeepNMF")))
 })
 
 test_that("length-2 penalties are rejected with an explanation", {
@@ -29,10 +24,12 @@ test_that("length-2 penalties are rejected with an explanation", {
     sce <- mockSCE(ngenes = 100, ncells = 50)
     sce <- logNormCounts(sce)
 
-    expect_error(runDeepNMF(sce, k = c(10, 3), L1 = c(0, 0), verbose = FALSE),
+    sce$batch <- rep(c("A", "B"), length.out = ncol(sce))
+    expect_error(runConditionedNMF(sce, k = 3, condition_col = "batch",
+                                   L1 = c(0, 0), verbose = FALSE),
                  "single numeric value")
-    expect_error(runDeepNMF(sce, k = c(10, 3), L2 = c(0.1, 0.1),
-                            verbose = FALSE),
+    expect_error(runConditionedNMF(sce, k = 3, condition_col = "batch",
+                                   L2 = c(0.1, 0.1), verbose = FALSE),
                  "single numeric value")
 })
 

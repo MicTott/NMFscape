@@ -74,9 +74,10 @@ predictNMF <- function(new_data, reference, ref_name = "NMF",
                  "separately with runNMFscape() instead.")
         }
         if (!is.null(model$n_layers) && model$n_layers > 1) {
-            stop("predictNMF() cannot project multi-layer FactorNet results ",
-                 "such as those from runDeepNMF(). RcppML 1.0.0 supports ",
-                 "predict() only for single-layer graphs.")
+            stop("predictNMF() cannot project multi-layer FactorNet results, ",
+                 "such as a custom graph passed through runFactorNet(). ",
+                 "RcppML 1.0.0 supports predict() only for single-layer ",
+                 "graphs.")
         }
 
         ref_features <- NULL

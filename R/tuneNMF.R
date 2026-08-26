@@ -13,8 +13,6 @@
 #' \describe{
 #'   \item{\code{"standard"}}{one \code{nmf_layer} on the assay matrix, as in
 #'     \code{\link{runNMFscape}}.}
-#'   \item{\code{"deep"}}{a chain of \code{nmf_layer} calls, as in
-#'     \code{\link{runDeepNMF}}. See "Deep recipe" below.}
 #'   \item{\code{"multimodal"}}{\code{\link[RcppML]{factor_shared}} across
 #'     modalities feeding one \code{nmf_layer}, as in
 #'     \code{\link{runMultiModalNMF}}.}
@@ -29,42 +27,11 @@
 #' FactorNet layers take a \emph{scalar} \code{L1}/\code{L2} per layer, unlike
 #' \code{\link{runNMFscape}}, which takes a length-2 c(w, h) vector.
 #'
-#' @section Deep recipe:
-#' \code{runDeepNMF()} takes a per-layer rank \emph{vector}, so a joint grid
-#' would have to range over candidate vectors. That is not possible with
-#' RcppML 1.0.0: multi-layer graphs diverge (training loss goes to
-#' \code{NaN}) when \code{test_fraction > 0}, and every layer reports
-#' \code{test_loss = 0}, so a joint held-out score cannot be computed. Rather
-#' than return meaningless numbers, \code{tuneNMF()} tunes a deep chain
-#' \strong{sequentially, one layer at a time}: layer 1 is cross-validated on the
-#' assay matrix, the winning rank is fitted without masking, and layer 2 is then
-#' cross-validated on the transpose of that layer's H -- exactly the matrix
-#' layer 2 factorizes inside \code{runDeepNMF()}. Every fit scored this way is a
-#' single layer, which is the case that works upstream. Accordingly,
-#' \code{params$k} for the deep recipe is a \emph{list of per-layer candidate
-#' grids}, one element per layer, e.g.
-#' \code{params = list(k = list(c(10, 20, 30), c(3, 5, 8)))} searches three
-#' ranks for layer 1 and three for layer 2. Non-\code{k} parameters are selected
-#' at layer 1 and then held fixed for the deeper layers, matching the scalar
-#' \code{L1}/\code{L2} that \code{runDeepNMF()} applies to every layer. Because
-#' the search is greedy rather than joint, cost is additive in the per-layer
-#' grid sizes rather than multiplicative.
-#'
-#' Penalties do not rescale between layers: layer 1 sees the assay matrix while
-#' layer 2 sees the layer above's H, which is typically orders of magnitude
-#' smaller. A penalty that suits layer 1 can therefore collapse a deeper layer,
-#' in which case \code{tuneNMF()} stops with an error naming the carried-over
-#' settings rather than reporting a degenerate fit. Tuning \code{k} on its own
-#' avoids this entirely.
-#'
 #' @param x A SingleCellExperiment or SpatialExperiment object
 #' @param params Named list of candidate parameter values passed to
-#'   \code{\link[RcppML]{nmf_layer}}, e.g. \code{list(k = c(5, 10, 20))}. For
-#'   \code{recipe = "deep"}, \code{params$k} must instead be a list of per-layer
-#'   candidate grids (see "Deep recipe").
+#'   \code{\link[RcppML]{nmf_layer}}, e.g. \code{list(k = c(5, 10, 20))}.
 #' @param recipe Character, which graph topology to tune. One of "standard",
-#'   "deep", "multimodal" or "conditioned". Ignored when \code{layer_fn} is
-#'   supplied.
+#'   "multimodal" or "conditioned". Ignored when \code{layer_fn} is supplied.
 #' @param assay Character, which assay to use (default "logcounts"). For
 #'   \code{recipe = "multimodal"} a character vector of two or more assay names
 #'   selects same-feature-space modalities.
@@ -102,13 +69,12 @@
 #'   \itemize{
 #'     \item \code{summary}: data.frame of parameter combinations ranked by
 #'       \code{mean_test_loss}, with \code{se_test_loss}, \code{mean_train_loss}
-#'       and \code{n_valid}. For \code{recipe = "deep"} it also has a
-#'       \code{layer} column.
+#'       and \code{n_valid}.
 #'     \item \code{results}: per-replicate data.frame with \code{test_loss},
 #'       \code{train_loss}, \code{iterations} and \code{converged}.
 #'     \item \code{best_params}: named list of the winning values, shaped so it
 #'       can be passed straight to the matching \code{run*()} function, e.g.
-#'       \code{do.call(runDeepNMF, c(list(x = sce), fit$best_params))}.
+#'       \code{do.call(runNMFscape, c(list(x = sce), fit$best_params))}.
 #'     \item \code{recipe}, \code{params}, \code{reps}, \code{strategy},
 #'       \code{n_fits}, \code{config}.
 #'   }
@@ -123,12 +89,6 @@
 #' tuned$summary
 #' sce <- do.call(runNMFscape, c(list(x = sce), tuned$best_params))
 #'
-#' # Deep recipe: one candidate grid per layer
-#' deep_tuned <- tuneNMF(sce, recipe = "deep",
-#'                       params = list(k = list(c(6, 8), c(2, 3))),
-#'                       reps = 1, verbose = FALSE)
-#' deep_tuned$best_params$k
-#'
 #' @seealso \code{\link{plotTuning}} to visualise the result,
 #'   \code{\link{selectRank}} for the single-layer special case,
 #'   \code{\link[RcppML]{cross_validate_graph}} for the underlying engine.
@@ -138,7 +98,7 @@
 #'   factor_condition nmf_layer factor_net factor_config fit
 #' @importFrom utils modifyList
 tuneNMF <- function(x, params,
-                    recipe = c("standard", "deep", "multimodal", "conditioned"),
+                    recipe = c("standard", "multimodal", "conditioned"),
                     assay = "logcounts", subset_row = NULL, reps = 3,
                     strategy = c("grid", "random"), n_random = 20,
                     test_fraction = 0.2, condition_col = NULL,
@@ -169,13 +129,6 @@ tuneNMF <- function(x, params,
     .checkTuneParams(params, recipe = if (use_custom) "standard" else recipe)
 
     config <- .tuneConfig(test_fraction = test_fraction, seed = seed, ...)
-
-    if (recipe == "deep" && !use_custom) {
-        return(.tuneDeep(x = x, params = params, assay = assay,
-                         subset_row = subset_row, config = config, reps = reps,
-                         strategy = strategy, n_random = n_random,
-                         seed = seed, verbose = verbose))
-    }
 
     inputs <- .tuneInputs(x, recipe = recipe, assay = assay,
                           subset_row = subset_row, alt_exps = alt_exps,
@@ -238,8 +191,7 @@ tuneNMF <- function(x, params,
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-# Validate the parameter grid. Deep grids carry a list of per-layer vectors
-# under `k`; every other recipe wants plain atomic vectors throughout.
+# Validate the parameter grid: every recipe wants plain atomic vectors.
 # @noRd
 .checkTuneParams <- function(params, recipe) {
     if (!is.list(params) || length(params) == 0) {
@@ -251,28 +203,7 @@ tuneNMF <- function(x, params,
         stop("All elements of params must have unique, non-empty names")
     }
 
-    if (recipe == "deep") {
-        if (!"k" %in% names(params)) {
-            stop("params must include 'k' for recipe = \"deep\"")
-        }
-        k_grids <- params$k
-        if (!is.list(k_grids) || length(k_grids) < 2) {
-            stop("For recipe = \"deep\", params$k must be a list with one ",
-                 "candidate grid per layer and at least 2 layers, e.g. ",
-                 "list(k = list(c(10, 20, 30), c(3, 5, 8))). Use ",
-                 "recipe = \"standard\" for single-layer NMF.")
-        }
-        for (i in seq_along(k_grids)) {
-            g <- k_grids[[i]]
-            if (!is.numeric(g) || length(g) == 0 || anyNA(g) || any(g < 1)) {
-                stop("params$k[[", i, "]] must be a non-empty numeric vector ",
-                     "of positive ranks")
-            }
-        }
-        others <- params[setdiff(names(params), "k")]
-    } else {
-        others <- params
-    }
+    others <- params
 
     for (nm in names(others)) {
         v <- others[[nm]]
@@ -436,133 +367,3 @@ tuneNMF <- function(x, params,
     )
 }
 
-# Sequential, layer-by-layer cross-validation of a deep chain.
-#
-# RcppML 1.0.0 cannot score a multi-layer graph: with test_fraction > 0 the
-# chain diverges (train loss -> NaN) and every layer reports test_loss = 0.
-# Single layers are fine, so each layer is cross-validated on its own input:
-# layer 1 on the assay matrix, layer i > 1 on t(H) of the layer above, which is
-# exactly the matrix runDeepNMF() feeds it.
-# @noRd
-.tuneDeep <- function(x, params, assay, subset_row, config, reps, strategy,
-                      n_random, seed, verbose) {
-
-    .validateSCE(x, assay)
-    mat <- .extractAssayMatrix(x, assay, subset_row)
-
-    k_grids <- lapply(params$k, function(g) sort(unique(as.integer(g))))
-    n_layers <- length(k_grids)
-    others <- params[setdiff(names(params), "k")]
-
-    n_fits <- .tuneFitCount(c(list(k = k_grids[[1]]), others), reps,
-                            strategy, n_random)
-    for (i in seq_len(n_layers)[-1]) {
-        n_fits <- n_fits + length(k_grids[[i]]) * reps
-    }
-    .reportCost(n_fits, verbose,
-                prefix = paste0("Cross-validating ", n_layers,
-                                " layers sequentially, "))
-
-    full_config <- config
-    full_config$test_fraction <- 0
-
-    summaries <- vector("list", n_layers)
-    all_results <- vector("list", n_layers)
-    chosen_k <- integer(n_layers)
-    fixed <- others[FALSE]
-    current <- mat
-
-    for (i in seq_len(n_layers)) {
-        grid <- k_grids[[i]]
-        max_k <- min(dim(current)) - 1L
-        keep <- grid <= max_k
-        if (!any(keep)) {
-            stop("No candidate rank for layer ", i, " fits its input matrix ",
-                 "(", nrow(current), " x ", ncol(current), "). Supply ranks ",
-                 "below ", max_k + 1L, ".")
-        }
-        if (!all(keep) && verbose) {
-            message("Layer ", i, ": dropping rank(s) ",
-                    paste(grid[!keep], collapse = ", "),
-                    " that exceed the input dimension")
-        }
-        grid <- grid[keep]
-
-        layer_params <- c(list(k = grid),
-                          if (i == 1L) others else fixed)
-        node <- RcppML::factor_input(current, name = "input")
-        layer_name <- paste0("layer_", i)
-        fn <- function(p) {
-            do.call(RcppML::nmf_layer,
-                    c(list(node, name = layer_name), as.list(p)))
-        }
-
-        if (verbose) {
-            message("Layer ", i, ": cross-validating k = ",
-                    paste(grid, collapse = ", "), " on a ", nrow(current),
-                    " x ", ncol(current), " matrix")
-        }
-
-        cv <- RcppML::cross_validate_graph(
-            inputs = list(node), layer_fn = fn, params = layer_params,
-            config = config, reps = reps, strategy = strategy,
-            n_random = n_random, seed = as.integer(seed + 1000L * i),
-            verbose = FALSE
-        )
-
-        if (all(is.na(cv$summary$mean_test_loss)) ||
-            isTRUE(all(cv$summary$mean_test_loss == 0))) {
-            reason <- if (i > 1L && length(fixed) > 0) {
-                paste0("The layer-1 settings carried over here (",
-                       .describeParams(fixed), ") are the likely cause: this ",
-                       "layer factorizes the layer above's H, which is on a ",
-                       "much smaller scale than the assay, so a penalty ",
-                       "tuned on the assay can collapse it. Try smaller ",
-                       "penalties, or tune k on its own.")
-            } else {
-                paste0("This layer cannot be cross-validated with the ",
-                       "installed version of RcppML.")
-            }
-            stop("Layer ", i, " produced no usable held-out loss (every fit ",
-                 "returned NA or zero). ", reason)
-        }
-
-        summaries[[i]] <- cbind(layer = i, cv$summary)
-        all_results[[i]] <- cbind(layer = i, cv$results)
-
-        k_i <- as.integer(cv$best_params$k)
-        chosen_k[i] <- k_i
-        if (i == 1L) {
-            fixed <- cv$best_params[setdiff(names(cv$best_params), "k")]
-        }
-
-        if (i < n_layers) {
-            out <- do.call(RcppML::nmf_layer,
-                           c(list(node, k = k_i, name = layer_name), fixed))
-            res <- RcppML::fit(RcppML::factor_net(inputs = list(node),
-                                                  output = out,
-                                                  config = full_config))
-            current <- t(res$layers[[layer_name]]$H)
-        }
-    }
-
-    if (any(diff(chosen_k) >= 0)) {
-        warning("Selected ranks are not strictly decreasing (k = ",
-                paste(chosen_k, collapse = ", "),
-                "); hierarchical factorization normally needs k to shrink ",
-                "with depth.", call. = FALSE)
-    }
-
-    summary_df <- do.call(rbind, summaries)
-    results_df <- do.call(rbind, all_results)
-    best <- c(list(k = chosen_k), fixed)
-
-    if (verbose) {
-        message("Best: ", .describeParams(best))
-    }
-
-    .tuningObject(summary = summary_df, results = results_df,
-                  best_params = best, recipe = "deep", params = params,
-                  reps = reps, strategy = strategy, n_fits = n_fits,
-                  config = config, param_names = names(params))
-}

@@ -36,8 +36,6 @@ navbar:
         href: articles/cell-type-programs.html
       - text: -------
       - text: "Advanced Workflows"
-      - text: "Deep NMF: Hierarchical Gene Programs"
-        href: articles/deep-nmf.html
       - text: Multi-Modal NMF Analysis
         href: articles/multi-modal.html
       - text: Transfer Learning and Batch Correction
@@ -60,7 +58,6 @@ reference:
 - title: FactorNet Recipes
   desc: Multi-layer and multi-modal NMF via the RcppML FactorNet graph DSL
   contents:
-  - runDeepNMF
   - runMultiModalNMF
   - runConditionedNMF
   - runFactorNet
@@ -128,7 +125,6 @@ articles:
 - title: Advanced Workflows
   navbar: Advanced Workflows
   contents:
-  - deep-nmf
   - multi-modal
   - transfer-learning
 

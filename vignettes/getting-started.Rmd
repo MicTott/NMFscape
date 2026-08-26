@@ -175,7 +175,6 @@ NMFscape provides a full suite of tools for NMF-based analysis:
 
 - **Choosing k**: Cross-validation, distribution selection, and consensus stability for optimal rank selection. See `vignette("choosing-k")`.
 - **Cell type programs**: Deeper biological interpretation with label-guided refinement. See `vignette("cell-type-programs")`.
-- **Deep NMF**: Hierarchical factorization for discovering meta-programs. See `vignette("deep-nmf")`.
 - **Multi-modal NMF**: Joint factorization of RNA + chromatin accessibility data. See `vignette("multi-modal")`.
 - **Transfer learning**: Project new data onto a reference NMF model with batch correction. See `vignette("transfer-learning")`.
 

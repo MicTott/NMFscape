@@ -1,5 +1,16 @@
 # Changes in version 0.99.5 (2026-08-26)
 
+
+* `runDeepNMF()` is removed, along with the `"deep"` recipe in `tuneNMF()` and
+  the deep-nmf vignette. Hierarchical NMF degraded monotonically with depth
+  (reconstruction r 0.711 / 0.663 / 0.356 / 0.294 at 2/3/4/5 layers) with no
+  demonstrated interpretability gain, and it could not be cross-validated,
+  projected onto new data, or evaluated, because RcppML 1.0.0 supports none of
+  those for multi-layer graphs. Clustering the programs of a single-layer fit
+  gives the same hierarchy without the machinery. The FactorNet
+  infrastructure remains for `runMultiModalNMF()`, `runConditionedNMF()` and
+  `runFactorNet()`.
+
 ## Bug Fixes
 
 * `consensusNMF()` now stores the representative replicate as an S4 `nmf` model
