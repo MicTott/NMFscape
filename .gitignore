@@ -54,3 +54,6 @@ CLAUDE.md
 
 # Plot artifacts
 Rplots.pdf
+
+# Agent worktrees
+.claude/worktrees/
