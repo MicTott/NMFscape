@@ -82,6 +82,7 @@ runConditionedNMF <- function(x, k, condition_col, assay = "logcounts",
         stop("condition_col must be character, factor, or numeric")
     }
 
+    feature_names <- .subsetRowNames(x, subset_row)
     mat <- .extractAssayMatrix(x, assay, subset_row)
 
     if (verbose) {
@@ -106,11 +107,6 @@ runConditionedNMF <- function(x, k, condition_col, assay = "logcounts",
     layer <- result$layers$nmf
     absorbed <- .absorbDiagonal(layer$W, layer$H, layer$d, absorb_d)
 
-    feature_names <- if (!is.null(subset_row)) {
-        rownames(x)[subset_row]
-    } else {
-        rownames(x)
-    }
     named <- .setFactorNames(absorbed$basis, absorbed$coeff,
                              feature_names, colnames(x), k)
 

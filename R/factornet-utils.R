@@ -44,3 +44,19 @@
     colnames(coeff) <- factor_names
     list(basis = basis, coeff = coeff)
 }
+
+.subsetRowNames <- function(x, subset_row) {
+    if (is.null(subset_row)) {
+        return(rownames(x))
+    }
+    if (is.character(subset_row)) {
+        missing <- setdiff(subset_row, rownames(x))
+        if (length(missing) > 0) {
+            stop("subset_row features not found in rownames(x): ",
+                 paste(utils::head(missing, 5), collapse = ", "),
+                 if (length(missing) > 5) ", ..." else "")
+        }
+        return(subset_row)
+    }
+    rownames(x)[subset_row]
+}

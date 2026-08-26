@@ -74,6 +74,7 @@ runDeepNMF <- function(x, k, assay = "logcounts", name = "DeepNMF",
                 "decrease with depth for hierarchical factorization")
     }
 
+    feature_names <- .subsetRowNames(x, subset_row)
     mat <- .extractAssayMatrix(x, assay, subset_row)
 
     if (verbose) {
@@ -204,11 +205,6 @@ runDeepNMF <- function(x, k, assay = "logcounts", name = "DeepNMF",
     }
 
     k_final <- k[n_layers]
-    feature_names <- if (!is.null(subset_row)) {
-        rownames(x)[subset_row]
-    } else {
-        rownames(x)
-    }
     named <- .setFactorNames(eff_basis, coeff_matrix,
                              feature_names, colnames(x), k_final)
 

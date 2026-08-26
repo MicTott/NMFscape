@@ -64,6 +64,8 @@ runNMFscape <- function(x, k, assay = "logcounts", name = "NMF",
         stop("assay '", assay, "' not found in x")
     }
 
+    feature_names <- .subsetRowNames(x, subset_row)
+
     mat <- assay(x, assay)
 
     if (!is.null(subset_row)) {
@@ -82,7 +84,7 @@ runNMFscape <- function(x, k, assay = "logcounts", name = "NMF",
         dist_result <- RcppML::auto_nmf_distribution(
             data = mat, k = k, seed = seed, verbose = FALSE, ...
         )
-        loss <- dist_result$best
+        loss <- dist_result$loss
         if (verbose) message("Selected distribution: ", loss)
     }
 
@@ -110,11 +112,7 @@ runNMFscape <- function(x, k, assay = "logcounts", name = "NMF",
 
     # Set names
     factor_names <- paste0("NMF_", seq_len(k))
-    if (!is.null(subset_row)) {
-        rownames(basis_matrix) <- rownames(x)[subset_row]
-    } else {
-        rownames(basis_matrix) <- rownames(x)
-    }
+    rownames(basis_matrix) <- feature_names
     colnames(basis_matrix) <- factor_names
     rownames(coeff_matrix) <- colnames(x)
     colnames(coeff_matrix) <- factor_names
