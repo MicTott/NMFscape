@@ -1,6 +1,17 @@
 # Changes in version 0.99.5 (2026-08-26)
 
 
+* `enrichPrograms()` tests NMF programs against user-supplied gene sets, and
+  `plotProgramEnrichment()` draws the result as a dot plot. A program's column
+  of the basis matrix is already a ranking over every measured gene, so the
+  default method is preranked GSEA (`fgsea`, in Suggests) with no top-N cutoff;
+  `method = "ora"` is the hypergeometric alternative on the top `n_top` genes,
+  using the genes in the basis matrix as the background rather than the whole
+  gene-set collection. `scoreType` defaults to `"pos"` because NMF loadings are
+  non-negative and the ranking is therefore one-sided. Gene sets are not
+  bundled: pass a named list of character vectors or an msigdbr-style
+  data.frame.
+
 * `runDeepNMF()` is removed, along with the `"deep"` recipe in `tuneNMF()` and
   the deep-nmf vignette. Hierarchical NMF degraded monotonically with depth
   (reconstruction r 0.711 / 0.663 / 0.356 / 0.294 at 2/3/4/5 layers) with no
