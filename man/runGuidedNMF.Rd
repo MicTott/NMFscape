@@ -28,7 +28,8 @@ runGuidedNMF(
 
 \item{label_col}{Character, column name in \code{colData(x)} holding the
 guiding labels. May be character or factor. \code{NA} entries are
-retained and left unguided.}
+retained in the factorization and given a zero target column (see
+Details).}
 
 \item{mode}{Character, either "enrich" (attract \code{H} toward the label
 structure) or "remove" (adversarially suppress label-correlated
@@ -91,10 +92,20 @@ Expect roughly double the runtime of \code{\link{runNMFscape}}. Set
 \code{init_name} to also keep the base fit, which makes the guided/unguided
 comparison free rather than costing a third fit.
 
-Cells whose label is \code{NA} are kept in the factorization but receive a
-zero target column, so they are left unguided. This is what makes the
-method semi-supervised: label the cells you are confident about, pass
-\code{NA} for the rest, and let those cells float.
+Cells whose label is \code{NA} are kept in the factorization and receive a
+zero target column, which is what makes the method semi-supervised: label
+the cells you are confident about and pass \code{NA} for the rest.
+
+Be aware of what a zero target column actually does, though. It is not an
+exemption from the penalty, it is a target of zero, so as \code{strength}
+rises the unlabelled cells are pulled toward the origin rather than left to
+float. At \code{strength = 1} this is negligible (unlabelled cells kept
+99\% of the coefficient mass of labelled ones in our test), but by
+\code{strength = 20} they retained only about a third of it. When a
+substantial fraction of cells is unlabelled, keep \code{strength} modest
+and check that unlabelled cells have not collapsed toward zero, for example
+by comparing \code{rowSums} of the embedding across labelled and
+unlabelled cells.
 
 Guidance is only available through the single-layer
 \code{\link[RcppML]{nmf}} path. The per-factor \code{W()}/\code{H()}

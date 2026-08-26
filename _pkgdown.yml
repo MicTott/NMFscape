@@ -42,6 +42,8 @@ navbar:
         href: articles/multi-modal.html
       - text: Transfer Learning and Batch Correction
         href: articles/transfer-learning.html
+      - text: Guided NMF and Batch Correction
+        href: articles/guided-and-batch.html
     news:
       text: Changelog
       href: news/index.html
@@ -64,6 +66,11 @@ reference:
   - runMultiModalNMF
   - runConditionedNMF
   - runFactorNet
+
+- title: Label-Guided NMF
+  desc: Steer the factorization with labels, or adversarially remove a covariate
+  contents:
+  - runGuidedNMF
 
 - title: Diagnostics and Model Selection
   desc: Choose k, select loss distribution, evaluate model quality
@@ -129,6 +136,7 @@ articles:
   - deep-nmf
   - multi-modal
   - transfer-learning
+  - guided-and-batch
 
 authors:
   Michael Totty:
