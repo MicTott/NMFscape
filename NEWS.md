@@ -1,5 +1,14 @@
 # Changes in version 0.99.5 (2026-08-26)
 
+
+* `consensusNMF()` now stores the representative replicate as an S4 `nmf` model
+  under `metadata(x)[[paste0(name, "_model")]]`. It was the only model-fitting
+  function that did not, so `getModel()`, `getDiagonal()`, `evaluateNMF()`,
+  `reconstructNMF()` and `diagnoseNMF()` all failed on consensus results.
+* `.Rbuildignore` is tracked rather than gitignored. It existed only in the
+  local working copy, so fresh clones and CI built without it, shipping
+  `docs/`, `pkgdown/`, `input/` and `CLAUDE.md` into the tarball.
+
 ## New Features
 
 * `alignPrograms()` compares two independently fit NMF models and reports

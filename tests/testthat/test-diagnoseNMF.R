@@ -98,10 +98,12 @@ test_that("diagnoseNMF works on refineNMF results", {
     expect_s3_class(res$sparsity, "data.frame")
 })
 
-test_that("diagnoseNMF explains that consensusNMF stores no model", {
+test_that("diagnoseNMF works on consensusNMF results", {
     skip_if_not_installed("scuttle")
     sce <- setup_diag_sce(ngenes = 120, ncells = 60)
     cons <- consensusNMF(sce, k = 3, n_runs = 5, seed = 1, verbose = FALSE)
 
-    expect_error(diagnoseNMF(cons, name = "cNMF"), "not found in metadata")
+    res <- diagnoseNMF(cons, name = "cNMF")
+    expect_equal(res$k, 3)
+    expect_s3_class(res$sparsity, "data.frame")
 })

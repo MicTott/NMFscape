@@ -17,10 +17,10 @@ diagnoseNMF(
 }
 \arguments{
 \item{x}{A SingleCellExperiment or SpatialExperiment object with NMF results
-from \code{\link{runNMFscape}} or \code{\link{refineNMF}}, which are
-the functions that store an S4 \code{nmf} model.
-\code{\link{consensusNMF}} stores a consensus basis rather than a model
-and so cannot be diagnosed here.}
+from \code{\link{runNMFscape}}, \code{\link{consensusNMF}} or
+\code{\link{refineNMF}}, which are the functions that store an S4
+\code{nmf} model. The FactorNet recipes store a \code{factor_net_result}
+instead and are not supported here.}
 
 \item{name}{Character, name of the NMF result to diagnose (default "NMF").}
 
