@@ -1,3 +1,47 @@
+# Changes in version 0.99.5 (2026-08-26)
+
+## New Features
+
+* `tuneNMF()` - held-out cross-validation of hyperparameters for every
+  NMFscape recipe, not just single-layer NMF. Wraps
+  `RcppML::cross_validate_graph()`, which masks a random fraction of matrix
+  entries and scores their reconstruction - the same statistic `selectRank()`
+  already uses, generalized to a whole FactorNet graph. `recipe = "standard"`,
+  `"multimodal"` and `"conditioned"` build the same topology as
+  `runNMFscape()`, `runMultiModalNMF()` and `runConditionedNMF()`, so the
+  selected values transfer directly; `$best_params` is shaped to be passed
+  straight back, e.g.
+  `do.call(runConditionedNMF, c(list(x = sce, condition_col = "batch"), tuned$best_params))`.
+  Any `nmf_layer()` argument can be tuned, not only `k`, over a full grid or a
+  random sample of it, with replicate fits for standard errors. The number of
+  model fits is reported up front and warned about when large.
+* `plotTuning()` - visualizes a `tuneNMF()` result. One varying parameter gives
+  a line plot with SE bars and the best value marked, in the style of
+  `plotRankSelection()`; two give a heatmap with the best cell outlined; three
+  or more give a ranked dot plot of the best combinations. Deep results are
+  faceted by layer.
+* `selectRank()` gained a `@seealso` pointer to `tuneNMF()`. Its signature and
+  return value are unchanged.
+
+## Known Limitations
+
+* `tuneNMF(recipe = "deep")` tunes a deep chain **sequentially, one layer at a
+  time**, rather than over a joint grid of candidate rank vectors. RcppML
+  1.0.0 cannot score a multi-layer FactorNet graph: with `test_fraction > 0`
+  the chain diverges (training loss goes to `NaN`) and every layer reports
+  `test_loss = 0`, regardless of tolerance, iteration count, `mask_zeros`, or
+  depth. Single layers are unaffected, so each layer is cross-validated on its
+  own input - layer 1 on the assay matrix, layer *i* on the transpose of the
+  layer above's H, which is exactly the matrix `runDeepNMF()` feeds it.
+  Accordingly `params$k` for this recipe is a list of per-layer candidate
+  grids, e.g. `list(k = list(c(10, 20, 30), c(3, 5, 8)))`, and the cost is
+  additive rather than multiplicative in the grid sizes. Non-`k` parameters are
+  chosen at layer 1 and held fixed below, matching the scalar `L1`/`L2` that
+  `runDeepNMF()` applies to every layer; because penalties do not rescale
+  between layers, one that suits layer 1 can collapse a deeper layer, and
+  `tuneNMF()` then stops with an error naming the carried-over settings instead
+  of reporting a degenerate fit.
+
 # Changes in version 0.99.3 (2026-08-25)
 
 ## Bug Fixes
