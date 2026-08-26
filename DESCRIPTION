@@ -46,6 +46,7 @@ Suggests:
     patchwork,
     pheatmap,
     fgsea
+Remotes: github::zdebruine/RcppML
 VignetteBuilder: knitr
 biocViews: NonnegativeMatrixFactorization,
     GeneExpression, DifferentialExpression,
