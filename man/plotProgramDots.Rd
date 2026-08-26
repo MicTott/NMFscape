@@ -11,7 +11,7 @@ plotProgramDots(
   programs = NULL,
   scale = FALSE,
   min_pct = 0,
-  color_palette = c("lightgrey", "blue"),
+  color_palette = c("white", "black"),
   dot_scale = 6
 )
 }
@@ -24,12 +24,12 @@ plotProgramDots(
 
 \item{programs}{Integer vector of programs to plot. If NULL (default), plots all programs}
 
-\item{scale}{Logical, whether to scale program weights to 0-1 per program (default TRUE)}
+\item{scale}{Logical, whether to scale program weights to 0-1 per program (default FALSE)}
 
 \item{min_pct}{Numeric, minimum percentage of cells (0-100) required to show a dot (default 0)}
 
 \item{color_palette}{Character vector of length 2 for low and high colors
-(default c("lightgrey", "blue"))}
+(default c("white", "black"))}
 
 \item{dot_scale}{Numeric, scaling factor for dot sizes (default 6)}
 }
@@ -38,7 +38,7 @@ A ggplot object
 }
 \description{
 Creates a dot plot showing NMF program usage across cell groups (e.g., cell types).
-Color represents the sum program weight in each group, and dot size represents
+Color represents the mean program weight in each group, and dot size represents
 the percentage of cells with non-zero weights.
 }
 \examples{

@@ -1,17 +1,17 @@
 #' Plot dot plot of NMF program weights by group
 #'
 #' Creates a dot plot showing NMF program usage across cell groups (e.g., cell types).
-#' Color represents the sum program weight in each group, and dot size represents
+#' Color represents the mean program weight in each group, and dot size represents
 #' the percentage of cells with non-zero weights.
 #'
 #' @param x A SingleCellExperiment object with NMF results
 #' @param group Character, column name in colData(x) defining cell groups (e.g., "celltype")
 #' @param nmf_name Character, name of NMF result to use (default "NMF")
 #' @param programs Integer vector of programs to plot. If NULL (default), plots all programs
-#' @param scale Logical, whether to scale program weights to 0-1 per program (default TRUE)
+#' @param scale Logical, whether to scale program weights to 0-1 per program (default FALSE)
 #' @param min_pct Numeric, minimum percentage of cells (0-100) required to show a dot (default 0)
 #' @param color_palette Character vector of length 2 for low and high colors
-#'   (default c("lightgrey", "blue"))
+#'   (default c("white", "black"))
 #' @param dot_scale Numeric, scaling factor for dot sizes (default 6)
 #'
 #' @return A ggplot object
@@ -35,7 +35,7 @@
 #' plotProgramDots(sce, group = "celltype", scale = FALSE)
 plotProgramDots <- function(x, group, nmf_name = "NMF", programs = NULL,
                             scale = FALSE, min_pct = 0,
-                            color_palette = c("lightgrey", "blue"),
+                            color_palette = c("white", "black"),
                             dot_scale = 6) {
 
     # Check if group exists in colData
@@ -85,13 +85,13 @@ plotProgramDots <- function(x, group, nmf_name = "NMF", programs = NULL,
             grp_cells <- groups == grp
             grp_weights <- prog_weights[grp_cells]
 
-            sum_weight <- sum(grp_weights, na.rm = TRUE)
+            mean_weight <- mean(grp_weights, na.rm = TRUE)
             pct_nonzero <- sum(grp_weights > 0) / length(grp_weights) * 100
 
             results_list[[length(results_list) + 1]] <- data.frame(
                 Program = colnames(coeffs)[prog_idx],
                 Group = grp,
-                sumWeight = sum_weight,
+                meanWeight = mean_weight,
                 PctNonzero = pct_nonzero,
                 stringsAsFactors = FALSE
             )
@@ -111,12 +111,12 @@ plotProgramDots <- function(x, group, nmf_name = "NMF", programs = NULL,
 
     # Create dot plot
     p <- ggplot(plot_data, aes(x = Program, y = Group)) +
-        geom_point(aes(size = PctNonzero, color = sumWeight)) +
+        geom_point(aes(size = PctNonzero, color = meanWeight)) +
         scale_size_continuous(name = "Percent Non-zero", range = c(0, dot_scale)) +
         scale_color_gradient(
-            low = "white",
-            high = "black",
-            name = if (scale) "Scaled\nWeight" else "Sum \nWeight"
+            low = color_palette[1],
+            high = color_palette[2],
+            name = if (scale) "Scaled\nWeight" else "Mean\nWeight"
         ) +
         theme_minimal() +
         theme(
