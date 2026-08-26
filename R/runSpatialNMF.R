@@ -187,10 +187,13 @@ runSpatialNMF <- function(x, k, graph = c("knn", "delaunay", "distance"),
             stop("spatialCoords(x) has ", nrow(coords), " rows but x has ",
                  ncol(x), " columns")
         }
-        adjacency <- .buildSpatialAdjacency(coords, graph_type, n_neighbors,
-                                            radius, verbose)
+        built <- .buildSpatialAdjacency(coords, graph_type, n_neighbors,
+                                        radius, verbose)
+        adjacency <- built$adjacency
+        radius <- built$radius
     } else {
         graph_type <- "custom"
+        radius <- NULL
         adjacency <- .userAdjacency(graph, ncol(x), "graph")
         if (verbose) {
             message("Using supplied spot graph: ",
@@ -270,7 +273,7 @@ runSpatialNMF <- function(x, k, graph = c("knn", "delaunay", "distance"),
         } else {
             NA_integer_
         },
-        radius = if (identical(graph_type, "distance")) radius else NULL,
+        radius = radius,
         graph_lambda = graph_lambda,
         feature_lambda = feature_lambda,
         feature_graph = !is.null(feature_adjacency),

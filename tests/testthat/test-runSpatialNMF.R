@@ -179,6 +179,27 @@ test_that("an explicit radius changes the distance graph", {
     expect_equal(metadata(tight)$SpatialNMF_graph_params$radius, 1.1)
 })
 
+test_that("an auto-selected radius is recorded in metadata", {
+    spe <- makeSpatialGrid()
+
+    fit <- runSpatialNMF(spe, k = 4, graph = "distance", n_neighbors = 6,
+                         seed = 7, verbose = FALSE)
+
+    recorded <- metadata(fit)$SpatialNMF_graph_params$radius
+    expect_true(is.numeric(recorded) && length(recorded) == 1)
+    expect_true(recorded > 0)
+
+    # Rebuilding with the recorded radius reproduces the same graph.
+    explicit <- runSpatialNMF(spe, k = 4, graph = "distance",
+                              radius = recorded, seed = 7, verbose = FALSE)
+    expect_equal(metadata(explicit)$SpatialNMF_graph,
+                 metadata(fit)$SpatialNMF_graph)
+
+    # The other graph types record no radius.
+    knn_fit <- runSpatialNMF(spe, k = 4, seed = 7, verbose = FALSE)
+    expect_null(metadata(knn_fit)$SpatialNMF_graph_params$radius)
+})
+
 test_that("a plain SingleCellExperiment works with a supplied graph", {
     spe <- makeSpatialGrid()
     reference <- runSpatialNMF(spe, k = 4, graph_lambda = 1, seed = 7,

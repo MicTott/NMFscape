@@ -109,23 +109,26 @@
         }
     }
 
+    if (identical(graph_type, "distance")) {
+        if (is.null(radius)) {
+            radius <- .autoRadius(coords, n_neighbors)
+            if (verbose) {
+                message("Using auto radius = ", signif(radius, 4),
+                        " (median distance to neighbour ", n_neighbors, ")")
+            }
+        }
+        if (length(radius) != 1 || !is.numeric(radius) || is.na(radius) ||
+            radius <= 0) {
+            stop("radius must be a single positive number")
+        }
+    } else {
+        radius <- NULL
+    }
+
     a_mat <- switch(
         graph_type,
         knn = .knnAdjacency(coords, n_neighbors),
-        distance = {
-            if (is.null(radius)) {
-                radius <- .autoRadius(coords, n_neighbors)
-                if (verbose) {
-                    message("Using auto radius = ", signif(radius, 4),
-                            " (median distance to neighbour ", n_neighbors, ")")
-                }
-            }
-            if (length(radius) != 1 || !is.numeric(radius) || is.na(radius) ||
-                radius <= 0) {
-                stop("radius must be a single positive number")
-            }
-            .distanceAdjacency(coords, radius)
-        },
+        distance = .distanceAdjacency(coords, radius),
         delaunay = .delaunayAdjacency(coords)
     )
 
@@ -136,7 +139,9 @@
                 format(Matrix::nnzero(a_mat) / 2), " edges, mean degree ",
                 signif(mean(Matrix::rowSums(a_mat)), 3))
     }
-    a_mat
+    # Hand back the resolved radius too, so an auto-selected one can be
+    # recorded in metadata rather than lost.
+    list(adjacency = a_mat, radius = radius)
 }
 
 # Coerce and check a user-supplied adjacency matrix.

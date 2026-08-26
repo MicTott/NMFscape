@@ -86,7 +86,7 @@ spatialAutocorrelation <- function(x, name = "SpatialNMF", graph = NULL,
     } else {
         coords <- .spatialCoordsMatrix(x)
         a_mat <- .buildSpatialAdjacency(coords, "knn", n_neighbors, NULL,
-                                        verbose = FALSE)
+                                        verbose = FALSE)$adjacency
     }
 
     coeff <- as.matrix(reducedDim(x, name))
