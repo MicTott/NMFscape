@@ -36,7 +36,6 @@ actually happened -- including where a method did nothing useful.
 |---|---|---|
 | `refineNMF()` | After fitting | Wraps `RcppML::refine()`; shifts an existing embedding toward class centroids, optionally batch-aware |
 | `runGuidedNMF(mode = "enrich")` | During fitting | Adds a class-centroid target for `H` with a positive `target_lambda`, attracting the embedding toward the labels |
-| `runGuidedNMF(mode = "remove")` | During fitting | Same target with a negative `target_lambda`, triggering RcppML's eigenvalue-projected adversarial removal of target-correlated structure |
 | `runConditionedNMF()` | During fitting | Wraps `RcppML::factor_condition()`; concatenates a covariate design matrix to `H` so the covariate is explained by dedicated columns rather than by the programs |
 
 The two axes we care about are always the same:
@@ -271,43 +270,29 @@ simulation, partial labels will not get you there -- label more cells, or use
 `refineNMF()`, which shifts only the cells that have labels and leaves the
 rest exactly where they were.
 
-# runGuidedNMF(mode = "remove"): adversarial removal
+# Why `mode = "remove"` is disabled
 
-The same target with a *negative* `target_lambda` triggers RcppML's
-eigenvalue-projected adversarial update, which suppresses structure correlated
-with the target instead of attracting it. Point it at the batch, not the cell
-type:
+`runGuidedNMF()` also accepts a *negative* `target_lambda`, which triggers
+RcppML's eigenvalue-projected adversarial update: instead of attracting `H`
+toward the target it suppresses structure correlated with it. In principle
+that is exactly what batch removal should be, and it is the one operation here
+that would genuinely *delete* a covariate rather than merely demote it.
 
-```{r remove-sweep}
-remove_scores <- list()
-for (s in c(0.005, 0.01, 0.1, 0.5)) {
-  nm <- paste0("Remove_", s)
-  sce <- runGuidedNMF(sce, k = k, label_col = "batch", mode = "remove",
-                      strength = s, name = nm, seed = 42, verbose = FALSE)
-  remove_scores[[nm]] <- cbind(strength = s, scoreEmbedding(sce, nm))
-}
-do.call(rbind, remove_scores)
+In practice it destroys the factorization, so `mode = "remove"` errors rather
+than returning a degenerate result:
+
+```{r remove-refused, error = TRUE}
+runGuidedNMF(sce, k = k, label_col = "batch", mode = "remove",
+             strength = 0.5, verbose = FALSE)
 ```
 
-This is the honest result, and it is not a good one on this simulation. The
-method has a cliff rather than a dial. At strength 0.005 nothing has happened;
-by strength 0.01 the batch signal is gone (`batch_acc` drops from 1.00 toward
-the 0.5 chance level) but the cell type signal has gone with it (`type_acc`
-falls from 1.00 to roughly 0.3--0.4). We found no strength between those two
-that removes batch while preserving cell type.
-
-Unlike `refineNMF()` and enrichment, adversarial removal really does *delete*
-the batch information rather than merely demoting it -- that is what the
-falling `batch_acc` shows. It is a genuinely different operation, and the
-right one if you need the covariate to be unrecoverable. But on data where the
-nuisance and biological signals both load onto the same factors, the collateral
-damage is severe. Sweep the strength and check both axes before trusting it.
-
-```{r remove-final}
-sce <- runGuidedNMF(sce, k = k, label_col = "batch", mode = "remove",
-                    strength = 0.5, name = "Removed", seed = 42,
-                    verbose = FALSE)
-```
+Across strengths from 0.5 to 10 on both simulated and real data, the embedding
+collapsed onto a single program -- every cell taking its maximum on the same
+factor, with most programs exactly zero -- and agreement with cell type fell to
+ARI 0.000 at every strength tested. It is a cliff with no usable window rather
+than a dial. If you need a covariate to be genuinely unrecoverable, neither
+this nor anything else in the package delivers that today; see the summary
+table below for what the remaining methods do and do not achieve.
 
 # runConditionedNMF(): factoring the covariate out
 
@@ -333,11 +318,11 @@ columns. Conditioning is a soft constraint, not a projection.
 
 ```{r summary-table}
 summary_tab <- do.call(rbind, lapply(
-  c("NMF", "Refined", "Enriched", "Removed", "Conditioned"),
+  c("NMF", "Refined", "Enriched", "Conditioned"),
   function(nm) scoreEmbedding(sce, nm)
 ))
 summary_tab$method <- c("unguided NMF", "refineNMF", "guided: enrich",
-                        "guided: remove", "runConditionedNMF")
+                        "runConditionedNMF")
 summary_tab
 ```
 
@@ -374,9 +359,7 @@ What the numbers say:
   `runGuidedNMF()` fits twice by construction. On this data that is a fraction
   of a second either way, but on a real dataset it is the difference between
   one factorization and three.
-* **`runGuidedNMF(mode = "remove")` is the only method that actually deletes
-  the covariate**, and on this simulation it deletes the biology along with
-  it. Use it when unrecoverability is the requirement, and always sweep.
+
 * **`runConditionedNMF()` had no measurable effect here.** That is a statement
   about this simulation, not a general verdict -- conditioning is better suited
   to covariates that are diffuse across many genes, or continuous covariates
@@ -391,7 +374,7 @@ What the numbers say:
 | You have trustworthy labels and an already-fitted model | `refineNMF()` | Post hoc, no refit, as effective as guided fitting on this benchmark |
 | You want labels to shape the programs themselves, not just the embedding | `runGuidedNMF(mode = "enrich")` | Guidance enters the optimization, so `W` is learned under the constraint |
 | Only some cells are labelled | `runGuidedNMF(mode = "enrich")` at low `strength`, or `refineNMF()` | `NA` cells get a zero target column: at low strength that is effectively no guidance, but at high strength it shrinks them toward the origin |
-| The covariate must be genuinely unrecoverable (e.g. donor identity) | `runGuidedNMF(mode = "remove")` | Only method here that lowers classifier accuracy on the covariate; sweep `strength` and check both axes |
+| The covariate must be genuinely unrecoverable (e.g. donor identity) | none of these | Adversarial removal is disabled; all remaining methods demote the covariate rather than deleting it |
 | Continuous or diffuse nuisance variation (depth, %mito) | `runConditionedNMF()` | Dedicated `H` columns can absorb a trend without a target |
 | You just want to know whether you have a problem | `assessNMF()` twice | Score the embedding against biology and against the covariate before choosing anything |
 
