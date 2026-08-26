@@ -11,6 +11,15 @@
   infrastructure remains for `runMultiModalNMF()`, `runConditionedNMF()` and
   `runFactorNet()`.
 
+## Notes on RcppML
+
+* NMFscape now records the RcppML version it was tested against (1.0.0) and
+  emits a startup message if a newer one is installed. Seven arguments in
+  RcppML 1.0.0 are documented but do not behave as described, and NMFscape
+  works around each of them rather than passing them through; those
+  workarounds become incorrect if the upstream behaviour changes. See
+  `?"NMFscape-package"` for the list.
+
 ## Bug Fixes
 
 * `refineNMF()` gains an explicit `cycles` argument. It was reachable only
