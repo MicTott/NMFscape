@@ -1,0 +1,11 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^input$
+^docs$
+^pkgdown$
+^figures$
+^_pkgdown\.yml$
+^CLAUDE\.md$
+^NMFscape_.*\.tar\.gz$
+^\.claude$
+^\.github$
