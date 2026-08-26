@@ -31,8 +31,12 @@
 #' @param subset_rows Named list of per-modality feature subsets
 #' @param tol Numeric, tolerance for convergence (default 1e-5)
 #' @param maxit Integer, maximum iterations (default 100)
-#' @param L1 Numeric vector of length 2, L1 regularization (default c(0,0))
-#' @param L2 Numeric vector of length 2, L2 regularization (default c(0,0))
+#' @param L1 Numeric scalar, L1 regularization applied to each NMF layer
+#'   (default 0). Note this differs from \code{\link{runNMFscape}}, which takes a
+#'   length-2 c(w, h) vector; \code{\link[RcppML]{nmf_layer}} uses one penalty
+#'   per layer.
+#' @param L2 Numeric scalar, L2 regularization applied to each NMF layer
+#'   (default 0)
 #' @param distribution Character, loss function (default "mse")
 #' @param absorb_d Logical, whether to absorb diagonal scaling (default TRUE)
 #' @param seed Integer, random seed for reproducibility
@@ -76,13 +80,16 @@ runMultiModalNMF <- function(x, k, assays = NULL, alt_exps = NULL,
                              modality_names = NULL,
                              name = "MultiNMF", subset_rows = NULL,
                              tol = 1e-5, maxit = 100,
-                             L1 = c(0, 0), L2 = c(0, 0),
+                             L1 = 0, L2 = 0,
                              distribution = "mse", absorb_d = TRUE,
                              seed = NULL, verbose = TRUE, ...) {
 
     if (!is(x, "SingleCellExperiment")) {
         stop("x must be a SingleCellExperiment or SpatialExperiment object")
     }
+
+    .checkLayerPenalty(L1, "L1")
+    .checkLayerPenalty(L2, "L2")
 
     if (is.null(assays) && is.null(alt_exps)) {
         stop("Specify either 'assays' or 'alt_exps'")
@@ -163,7 +170,8 @@ runMultiModalNMF <- function(x, k, assays = NULL, alt_exps = NULL,
         RcppML::factor_input(mats[[i]], name = modality_names[i])
     })
     shared_node <- do.call(RcppML::factor_shared, inputs)
-    output <- RcppML::nmf_layer(shared_node, k = k, name = "shared_nmf")
+    output <- RcppML::nmf_layer(shared_node, k = k, L1 = L1, L2 = L2,
+                                name = "shared_nmf")
 
     config <- RcppML::factor_config(
         tol = tol, maxit = maxit, loss = distribution,

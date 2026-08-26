@@ -60,3 +60,13 @@
     }
     rownames(x)[subset_row]
 }
+
+.checkLayerPenalty <- function(value, name) {
+    if (length(value) != 1 || !is.numeric(value) || is.na(value)) {
+        stop(name, " must be a single numeric value for FactorNet-based ",
+             "factorizations. Unlike runNMFscape(), which takes a length-2 ",
+             "c(w, h) vector, RcppML::nmf_layer() applies one penalty per ",
+             "layer.")
+    }
+    invisible(value)
+}

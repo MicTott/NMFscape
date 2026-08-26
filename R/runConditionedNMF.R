@@ -15,8 +15,12 @@
 #' @param subset_row Vector specifying which features to use
 #' @param tol Numeric, tolerance for convergence (default 1e-5)
 #' @param maxit Integer, maximum iterations (default 100)
-#' @param L1 Numeric vector of length 2, L1 regularization (default c(0,0))
-#' @param L2 Numeric vector of length 2, L2 regularization (default c(0,0))
+#' @param L1 Numeric scalar, L1 regularization applied to each NMF layer
+#'   (default 0). Note this differs from \code{\link{runNMFscape}}, which takes a
+#'   length-2 c(w, h) vector; \code{\link[RcppML]{nmf_layer}} uses one penalty
+#'   per layer.
+#' @param L2 Numeric scalar, L2 regularization applied to each NMF layer
+#'   (default 0)
 #' @param distribution Character, loss function (default "mse")
 #' @param absorb_d Logical, whether to absorb diagonal scaling (default TRUE)
 #' @param seed Integer, random seed for reproducibility
@@ -45,11 +49,14 @@
 runConditionedNMF <- function(x, k, condition_col, assay = "logcounts",
                               name = "CondNMF", subset_row = NULL,
                               tol = 1e-5, maxit = 100,
-                              L1 = c(0, 0), L2 = c(0, 0),
+                              L1 = 0, L2 = 0,
                               distribution = "mse", absorb_d = TRUE,
                               seed = NULL, verbose = TRUE, ...) {
 
     .validateSCE(x, assay)
+
+    .checkLayerPenalty(L1, "L1")
+    .checkLayerPenalty(L2, "L2")
 
     if (!condition_col %in% colnames(colData(x))) {
         stop("condition_col '", condition_col, "' not found in colData(x)")
@@ -93,7 +100,8 @@ runConditionedNMF <- function(x, k, condition_col, assay = "logcounts",
     # Build FactorNet graph
     input <- RcppML::factor_input(mat, name = "input")
     conditioned <- RcppML::factor_condition(input, Z)
-    output <- RcppML::nmf_layer(conditioned, k = k, name = "nmf")
+    output <- RcppML::nmf_layer(conditioned, k = k, L1 = L1, L2 = L2,
+                                name = "nmf")
 
     config <- RcppML::factor_config(
         tol = tol, maxit = maxit, loss = distribution,
