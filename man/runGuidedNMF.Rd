@@ -109,7 +109,7 @@ unlabelled cells.
 
 Guidance is only available through the single-layer
 \code{\link[RcppML]{nmf}} path. The per-factor \code{W()}/\code{H()}
-configuration objects used by \code{\link{runDeepNMF}} and friends accept
+configuration objects used by \code{\link{runMultiModalNMF}} and friends accept
 \code{target} arguments but silently ignore them, so there is no guided
 equivalent for the multi-layer recipes and no \code{W}-side (marker gene)
 anchoring.
@@ -123,11 +123,6 @@ sce$celltype <- rep(c("TypeA", "TypeB"), length.out = ncol(sce))
 # Semi-supervised: pull programs toward the annotation
 sce <- runGuidedNMF(sce, k = 5, label_col = "celltype", verbose = FALSE)
 head(reducedDim(sce, "GuidedNMF"))
-
-# Adversarial: suppress a nuisance covariate
-sce$batch <- rep(c("b1", "b2"), length.out = ncol(sce))
-sce <- runGuidedNMF(sce, k = 5, label_col = "batch", mode = "remove",
-                    name = "DebatchedNMF", verbose = FALSE)
 
 }
 \seealso{
