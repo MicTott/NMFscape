@@ -89,6 +89,10 @@ runNMFscape <- function(x, k, assay = "logcounts", name = "NMF",
 
     if (verbose) {
         message("Running NMF with k=", k, " factors (loss=", loss, ")...")
+        if (.gpuAvailable()) {
+            message("A GPU is available to the RcppML backend; ",
+                    "see gpuInfo() for the device.")
+        }
     }
 
     nmf_result <- RcppML::nmf(data = mat, k = k, tol = tol, maxit = maxit,
