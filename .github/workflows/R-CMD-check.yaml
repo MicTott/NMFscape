@@ -1,0 +1,61 @@
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+name: R-CMD-check
+
+permissions: read-all
+
+jobs:
+  R-CMD-check:
+    runs-on: ${{ matrix.config.os }}
+
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: ubuntu-latest, r: 'release', bioc: 'devel'}
+          - {os: macos-latest, r: 'release', bioc: 'devel'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          use-public-rspm: true
+
+      - name: Install BiocManager and set Bioconductor repositories
+        run: |
+          install.packages("BiocManager")
+          BiocManager::install(version = "${{ matrix.config.bioc }}", ask = FALSE)
+          cat(sprintf('options(repos = c(%s))\n',
+                      paste(sprintf('"%s" = "%s"', names(BiocManager::repositories()),
+                                    BiocManager::repositories()), collapse = ", ")),
+              file = "~/.Rprofile", append = TRUE)
+        shell: Rscript {0}
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck, bioc::BiocCheck
+          needs: check
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+          build_args: 'c("--no-manual")'
+
+      - name: BiocCheck
+        run: BiocCheck::BiocCheck(".", `quit-with-status` = FALSE)
+        shell: Rscript {0}
