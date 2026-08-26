@@ -33,6 +33,15 @@
 * The data frame behind `plotProgramDots()` renames `sumWeight` to
   `meanWeight`.
 
+## Tests
+
+* Test suite expanded from 115 to 198. New regression coverage for character
+  `subset_row`, `distribution = "auto"`, FactorNet regularization, deep NMF at
+  three and four layers, and the FactorNet accessor paths.
+* First tests for the visualization and differential-program layer, which had
+  none: `plotProgramDots()`, `plotProgramHeatmap()`, `FindAllDEPs()`,
+  `plotDEPsVolcano()`, `plotDEPsHeatmap()`, `vizDimRed()` and `vizUMAP()`.
+
 ## Internal
 
 * Dropped unused `Matrix` and `parallel` imports, declared `grDevices`, and
