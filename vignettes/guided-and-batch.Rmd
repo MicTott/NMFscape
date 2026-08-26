@@ -1,0 +1,414 @@
+---
+title: "Guided NMF and Batch Correction"
+author: "Michael Totty"
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{Guided NMF and Batch Correction}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 8,
+  fig.height = 5,
+  fig.retina = 1,
+  dpi = 96
+)
+```
+
+# Introduction
+
+NMFscape has four different ways to push cell labels or a nuisance covariate
+into a factorization, and they are easy to confuse. This vignette runs all
+four on one simulated dataset that has both a known cell type signal and a
+known batch effect, scores them on the same two axes, and reports what
+actually happened -- including where a method did nothing useful.
+
+| Function | When guidance is applied | Mechanism |
+|---|---|---|
+| `refineNMF()` | After fitting | Wraps `RcppML::refine()`; shifts an existing embedding toward class centroids, optionally batch-aware |
+| `runGuidedNMF(mode = "enrich")` | During fitting | Adds a class-centroid target for `H` with a positive `target_lambda`, attracting the embedding toward the labels |
+| `runGuidedNMF(mode = "remove")` | During fitting | Same target with a negative `target_lambda`, triggering RcppML's eigenvalue-projected adversarial removal of target-correlated structure |
+| `runConditionedNMF()` | During fitting | Wraps `RcppML::factor_condition()`; concatenates a covariate design matrix to `H` so the covariate is explained by dedicated columns rather than by the programs |
+
+The two axes we care about are always the same:
+
+1. **Does the embedding still separate cell types?** (we want yes)
+2. **Does the embedding still separate batches?** (we want no)
+
+```{r load-packages, message=FALSE}
+library(NMFscape)
+library(SingleCellExperiment)
+library(ggplot2)
+
+set.seed(1001)
+```
+
+# A simulation with a known batch effect
+
+Each cell gets a cell type program (one of three, on genes 1--150) and a batch
+program (one of two, on genes 151--250), plus noise. The batch program is
+deliberately given a much larger amplitude than the cell type program, which
+is the usual situation in real data: the technical axis is the loudest thing
+in the matrix.
+
+```{r simulate}
+n_cells <- 450
+n_genes <- 300
+n_type <- 3
+n_batch <- 2
+
+celltype <- rep(paste0("Type", seq_len(n_type)), length.out = n_cells)
+batch <- rep(paste0("Batch", seq_len(n_batch)), length.out = n_cells)
+
+# cell type basis and coefficients (modest amplitude)
+w_type <- matrix(0.2, n_genes, n_type)
+for (i in seq_len(n_type)) {
+  w_type[((i - 1) * 50 + 1):(i * 50), i] <- runif(50, 1.2, 1.9)
+}
+h_type <- matrix(0.2, n_type, n_cells)
+for (j in seq_len(n_cells)) {
+  h_type[match(celltype[j], sort(unique(celltype))), j] <- runif(1, 1, 1.5)
+}
+
+# batch basis and coefficients (large amplitude)
+w_batch <- matrix(0.1, n_genes, n_batch)
+for (i in seq_len(n_batch)) {
+  w_batch[(150 + (i - 1) * 50 + 1):(150 + i * 50), i] <- runif(50, 3, 4.8)
+}
+h_batch <- matrix(0.1, n_batch, n_cells)
+for (j in seq_len(n_cells)) {
+  h_batch[match(batch[j], sort(unique(batch))), j] <- runif(1, 1, 1.5)
+}
+
+counts_mat <- w_type %*% h_type + w_batch %*% h_batch +
+  matrix(abs(rnorm(n_genes * n_cells, 0, 2.5)), n_genes, n_cells)
+rownames(counts_mat) <- sprintf("Gene_%03d", seq_len(n_genes))
+colnames(counts_mat) <- sprintf("Cell_%03d", seq_len(n_cells))
+
+sce <- SingleCellExperiment(list(logcounts = counts_mat))
+sce$celltype <- celltype
+sce$batch <- batch
+
+k <- 6
+sce
+```
+
+## Scoring both axes
+
+`assessNMF()` returns clustering metrics (ARI, NMI, silhouette) and
+cross-validated classifier accuracy for a stored embedding. We call it twice
+per method -- once against `celltype`, once against `batch` -- and keep four
+numbers.
+
+The distinction between the two kinds of metric matters here:
+
+* **ARI** asks whether unsupervised clustering of the embedding *lands on*
+  the labels. It reflects which axis dominates the geometry.
+* **Classifier accuracy** asks whether the labels are *recoverable at all*
+  from the embedding. It reflects whether the information is still present.
+
+A method can move the first without touching the second.
+
+```{r score-helper}
+scoreEmbedding <- function(x, name) {
+  by_type <- suppressMessages(
+    assessNMF(x, name = name, label_col = "celltype", min_class_size = 10)
+  )
+  by_batch <- suppressMessages(
+    assessNMF(x, name = name, label_col = "batch", min_class_size = 10)
+  )
+  data.frame(
+    method = name,
+    type_ari = round(by_type$metrics$ari, 3),
+    type_acc = round(by_type$metrics$accuracy_knn, 3),
+    batch_ari = round(by_batch$metrics$ari, 3),
+    batch_acc = round(by_batch$metrics$accuracy_knn, 3)
+  )
+}
+```
+
+# Baseline: unguided NMF
+
+```{r baseline}
+sce <- runNMFscape(sce, k = k, name = "NMF", seed = 42, verbose = FALSE)
+scoreEmbedding(sce, "NMF")
+```
+
+This is the problem in one row. Cell type is perfectly *recoverable*
+(`type_acc = 1`), but clustering the embedding recovers **batch**, not cell
+type (`batch_ari = 1`, `type_ari = 0.16`). Any downstream clustering step run
+on this embedding will find batches and call them cell types.
+
+# refineNMF(): post hoc correction
+
+`refineNMF()` takes the fitted model and shifts each cell's embedding toward
+its class centroid. It does not refit from the data, so it is cheap, and
+`batch_col` makes the shift batch-aware.
+
+```{r refine}
+sce <- refineNMF(sce, label_col = "celltype", name = "NMF",
+                 refined_name = "Refined", batch_col = "batch",
+                 verbose = FALSE)
+scoreEmbedding(sce, "Refined")
+```
+
+Cell type becomes the dominant clustering axis (`type_ari` 0.16 to 1.00) and
+batch stops being one (`batch_ari` 1.00 to ~0). Note that `batch_acc` stays at
+1.00: the batch information is still sitting in the embedding, it is simply no
+longer the direction that clustering picks up.
+
+# runGuidedNMF(mode = "enrich"): guidance during fitting
+
+`runGuidedNMF()` builds a class-centroid target for `H` with
+`RcppML::compute_target()` and refits with a positive `target_lambda`. Because
+the target has to be computed from *some* embedding, the function fits twice:
+an unguided base model, then the guided model. Set `init_name` to keep the
+base fit as well, which makes the guided-versus-unguided comparison free.
+
+Guidance strength matters, and the response is not gradual. Here is a sweep:
+
+```{r enrich-sweep}
+enrich_scores <- list()
+for (s in c(1, 2, 5, 10)) {
+  nm <- paste0("Enrich_", s)
+  sce <- runGuidedNMF(sce, k = k, label_col = "celltype", mode = "enrich",
+                      strength = s, name = nm, seed = 42, verbose = FALSE)
+  enrich_scores[[nm]] <- cbind(strength = s, scoreEmbedding(sce, nm))
+}
+do.call(rbind, enrich_scores)
+```
+
+Below strength 5 the guidance is simply too weak to compete with the batch
+program and the result is bit-for-bit uninteresting -- identical scores to the
+unguided fit. At strength 5 it flips completely and stays there. This is worth
+knowing: if guidance appears to do nothing, the strength is too low, not the
+method wrong.
+
+The default `whiten = TRUE` also matters. `compute_target()` applies
+OAS-shrinkage ZCA whitening when building the centroids, and turning it off
+loses the effect entirely at this strength:
+
+```{r whiten}
+sce <- runGuidedNMF(sce, k = k, label_col = "celltype", mode = "enrich",
+                    strength = 5, whiten = FALSE, name = "Enrich_nowhiten",
+                    seed = 42, verbose = FALSE)
+scoreEmbedding(sce, "Enrich_nowhiten")
+```
+
+We keep strength 5 with whitening as the representative enrichment result:
+
+```{r enrich-final}
+sce <- runGuidedNMF(sce, k = k, label_col = "celltype", mode = "enrich",
+                    strength = 5, name = "Enriched", init_name = "Unguided",
+                    seed = 42, verbose = FALSE)
+scoreEmbedding(sce, "Enriched")
+```
+
+## Semi-supervised use: labelling only some cells
+
+`compute_target()` gives `NA` cells a zero target column, so you can label the
+cells you are confident about and pass `NA` for the rest. No cells are dropped.
+
+```{r partial-labels}
+set.seed(123)
+partial <- sce$celltype
+partial[sample(ncol(sce), round(ncol(sce) * 0.6))] <- NA
+sce$partial_type <- partial
+
+sce <- runGuidedNMF(sce, k = k, label_col = "partial_type", mode = "enrich",
+                    strength = 5, name = "PartialEnrich", seed = 42,
+                    verbose = FALSE)
+
+metadata(sce)$PartialEnrich_guidance$n_guided
+nrow(reducedDim(sce, "PartialEnrich"))
+scoreEmbedding(sce, "PartialEnrich")
+```
+
+With 40% of the cells labelled, strength 5 -- which flipped the embedding
+completely with full labels -- does not flip it at all. Cell type ARI stays
+near the unguided baseline.
+
+The instinct is to turn the strength up, and that runs into the second thing
+worth knowing: **a zero target column is not an exemption from the penalty, it
+is a target of zero.** Unlabelled cells are pulled toward the origin rather
+than left to float, and the pull grows with `strength`. We can measure it by
+comparing the coefficient mass of unlabelled to labelled cells:
+
+```{r partial-shrinkage}
+labelled <- !is.na(sce$partial_type)
+strengths <- c(1, 5, 20, 50)
+
+mass_ratio <- vapply(strengths, function(s) {
+  nm <- paste0("Shrink_", s)
+  fit <- runGuidedNMF(sce, k = k, label_col = "partial_type", mode = "enrich",
+                      strength = s, name = nm, seed = 42, verbose = FALSE)
+  emb <- reducedDim(fit, nm)
+  mean(rowSums(emb[!labelled, ])) / mean(rowSums(emb[labelled, ]))
+}, numeric(1))
+
+data.frame(strength = strengths, unlabelled_over_labelled = round(mass_ratio, 3))
+```
+
+At strength 1 the unlabelled cells are untouched. As the strength climbs they
+lose coefficient mass, and in a dataset with less competing signal than this
+one the collapse is sharper still -- on a batch-free version of this
+simulation the ratio fell to roughly one third by strength 20.
+
+The practical rule: semi-supervised guidance is real, but it is a low-strength
+tool. Keep `strength` modest when a large fraction of cells is unlabelled, and
+check that the unlabelled cells have not collapsed toward the origin. If you
+need a high strength to overcome a dominant nuisance axis, as you do on this
+simulation, partial labels will not get you there -- label more cells, or use
+`refineNMF()`, which shifts only the cells that have labels and leaves the
+rest exactly where they were.
+
+# runGuidedNMF(mode = "remove"): adversarial removal
+
+The same target with a *negative* `target_lambda` triggers RcppML's
+eigenvalue-projected adversarial update, which suppresses structure correlated
+with the target instead of attracting it. Point it at the batch, not the cell
+type:
+
+```{r remove-sweep}
+remove_scores <- list()
+for (s in c(0.005, 0.01, 0.1, 0.5)) {
+  nm <- paste0("Remove_", s)
+  sce <- runGuidedNMF(sce, k = k, label_col = "batch", mode = "remove",
+                      strength = s, name = nm, seed = 42, verbose = FALSE)
+  remove_scores[[nm]] <- cbind(strength = s, scoreEmbedding(sce, nm))
+}
+do.call(rbind, remove_scores)
+```
+
+This is the honest result, and it is not a good one on this simulation. The
+method has a cliff rather than a dial. At strength 0.005 nothing has happened;
+by strength 0.01 the batch signal is gone (`batch_acc` drops from 1.00 toward
+the 0.5 chance level) but the cell type signal has gone with it (`type_acc`
+falls from 1.00 to roughly 0.3--0.4). We found no strength between those two
+that removes batch while preserving cell type.
+
+Unlike `refineNMF()` and enrichment, adversarial removal really does *delete*
+the batch information rather than merely demoting it -- that is what the
+falling `batch_acc` shows. It is a genuinely different operation, and the
+right one if you need the covariate to be unrecoverable. But on data where the
+nuisance and biological signals both load onto the same factors, the collateral
+damage is severe. Sweep the strength and check both axes before trusting it.
+
+```{r remove-final}
+sce <- runGuidedNMF(sce, k = k, label_col = "batch", mode = "remove",
+                    strength = 0.5, name = "Removed", seed = 42,
+                    verbose = FALSE)
+```
+
+# runConditionedNMF(): factoring the covariate out
+
+`runConditionedNMF()` uses a completely different mechanism. It one-hot encodes
+the covariate and concatenates it to `H` via `RcppML::factor_condition()`, so
+the model has explicit columns available to explain batch and, in principle,
+does not need to spend NMF programs on it.
+
+```{r conditioned}
+sce <- runConditionedNMF(sce, k = k, condition_col = "batch",
+                         name = "Conditioned", seed = 42, verbose = FALSE)
+scoreEmbedding(sce, "Conditioned")
+```
+
+On this simulation conditioning did nothing measurable. The embedding is not
+identical to the unguided fit -- the numbers move -- but every metric rounds to
+the same value, and batch is still the dominant clustering axis. The batch
+programs here are strong, dense, and sit on their own gene block, so NMF has
+every incentive to keep modelling them regardless of the extra conditioning
+columns. Conditioning is a soft constraint, not a projection.
+
+# Side by side
+
+```{r summary-table}
+summary_tab <- do.call(rbind, lapply(
+  c("NMF", "Refined", "Enriched", "Removed", "Conditioned"),
+  function(nm) scoreEmbedding(sce, nm)
+))
+summary_tab$method <- c("unguided NMF", "refineNMF", "guided: enrich",
+                        "guided: remove", "runConditionedNMF")
+summary_tab
+```
+
+```{r summary-plot, fig.height = 4}
+plot_df <- data.frame(
+  method = rep(summary_tab$method, 4),
+  metric = rep(c("cell type ARI", "cell type accuracy",
+                 "batch ARI", "batch accuracy"), each = nrow(summary_tab)),
+  value = c(summary_tab$type_ari, summary_tab$type_acc,
+            summary_tab$batch_ari, summary_tab$batch_acc)
+)
+plot_df$method <- factor(plot_df$method, levels = rev(summary_tab$method))
+plot_df$metric <- factor(plot_df$metric, levels = c(
+  "cell type ARI", "cell type accuracy", "batch ARI", "batch accuracy"))
+
+ggplot(plot_df, aes(x = value, y = method, color = metric)) +
+  geom_point(size = 3) +
+  facet_wrap(~ metric, nrow = 1) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey60") +
+  labs(x = "score", y = NULL,
+       title = "Higher is better on the left two panels, lower on the right two") +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+What the numbers say:
+
+* **`refineNMF()` and `runGuidedNMF(mode = "enrich")` are equally effective
+  here.** Both take cell type ARI from 0.16 to 1.00 and drop batch ARI to
+  approximately 0. Neither erases batch: `batch_acc` stays at 1.00 for both.
+  They reorganise which axis dominates the geometry, they do not remove the
+  covariate.
+* **`refineNMF()` is much cheaper.** It reuses the existing fit;
+  `runGuidedNMF()` fits twice by construction. On this data that is a fraction
+  of a second either way, but on a real dataset it is the difference between
+  one factorization and three.
+* **`runGuidedNMF(mode = "remove")` is the only method that actually deletes
+  the covariate**, and on this simulation it deletes the biology along with
+  it. Use it when unrecoverability is the requirement, and always sweep.
+* **`runConditionedNMF()` had no measurable effect here.** That is a statement
+  about this simulation, not a general verdict -- conditioning is better suited
+  to covariates that are diffuse across many genes, or continuous covariates
+  such as depth or percent mitochondrial reads, where a couple of extra `H`
+  columns can absorb the trend. Against a strong, block-structured batch
+  effect it does not compete.
+
+# Which should I use when
+
+| Situation | Reach for | Why |
+|---|---|---|
+| You have trustworthy labels and an already-fitted model | `refineNMF()` | Post hoc, no refit, as effective as guided fitting on this benchmark |
+| You want labels to shape the programs themselves, not just the embedding | `runGuidedNMF(mode = "enrich")` | Guidance enters the optimization, so `W` is learned under the constraint |
+| Only some cells are labelled | `runGuidedNMF(mode = "enrich")` at low `strength`, or `refineNMF()` | `NA` cells get a zero target column: at low strength that is effectively no guidance, but at high strength it shrinks them toward the origin |
+| The covariate must be genuinely unrecoverable (e.g. donor identity) | `runGuidedNMF(mode = "remove")` | Only method here that lowers classifier accuracy on the covariate; sweep `strength` and check both axes |
+| Continuous or diffuse nuisance variation (depth, %mito) | `runConditionedNMF()` | Dedicated `H` columns can absorb a trend without a target |
+| You just want to know whether you have a problem | `assessNMF()` twice | Score the embedding against biology and against the covariate before choosing anything |
+
+Two closing caveats.
+
+Guidance is only available through the single-layer `RcppML::nmf()` path that
+`runGuidedNMF()` uses. The per-factor configuration objects behind
+`runDeepNMF()` and the other FactorNet recipes accept target arguments but
+ignore them, so there is no guided deep NMF and no `W`-side (marker gene)
+anchoring.
+
+And guided methods make the labels true by construction. If you guide with
+cluster assignments and then evaluate against those same assignments, you will
+measure your own input. Validate on something the guidance did not see.
+
+# Session info
+
+```{r session-info}
+sessionInfo()
+```

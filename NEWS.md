@@ -45,6 +45,38 @@
 * `gpuInfo()` reports whether the installed RcppML build can offload to a GPU
   and which device it would use. `runNMFscape(verbose = TRUE)` now notes GPU
   availability when there is one.
+* `runGuidedNMF()` - label-guided (semi-supervised) NMF. `mode = "enrich"`
+  attracts the cell embedding toward class centroids during fitting;
+  `mode = "remove"` applies RcppML's eigenvalue-projected adversarial update
+  to suppress structure correlated with a covariate such as batch. Guidance
+  strength is always given as a positive `strength` and `mode` chooses the
+  sign, so a negative value cannot silently flip enrichment into adversarial
+  removal.
+  * Cells with `NA` labels are retained and given a zero target column, so
+    only a subset of cells need annotating. Note this is a target of zero,
+    not an exemption from the penalty: at high `strength` unlabelled cells
+    are shrunk toward the origin. The documentation and the new vignette
+    quantify this.
+  * Because the guidance target has to be built from an existing embedding,
+    the function fits twice (unguided base, then guided). `init_name` stores
+    the base fit as well so guided-versus-unguided comparison is free.
+  * Results are written to the standard NMFscape slots (`reducedDim`,
+    `_basis`, `_model`), so all existing accessors, plots and `FindAllDEPs()`
+    work on the output. Guidance parameters are recorded in
+    `metadata(x)[[paste0(name, "_guidance")]]`.
+  * Guidance is only available through the single-layer `RcppML::nmf()` path.
+    The per-factor configuration objects behind the FactorNet recipes accept
+    target arguments but ignore them, so there is no guided `runDeepNMF()`
+    and no W-side (marker gene) anchoring.
+
+## Vignettes
+
+* New vignette "Guided NMF and Batch Correction" compares `refineNMF()`,
+  `runGuidedNMF(mode = "enrich")`, `runGuidedNMF(mode = "remove")` and
+  `runConditionedNMF()` on one simulation with a known batch effect and known
+  cell types, scoring each on whether it preserves cell type separation and
+  whether it removes batch separation, and ends with a
+  "which should I use when" table.
 
 * `tuneNMF()` - held-out cross-validation of hyperparameters for every
   NMFscape recipe, not just single-layer NMF. Wraps
