@@ -49,6 +49,11 @@
   Programs*) keep the real Zeisel and Tasic datasets.
 * Fixed duplicate chunk labels in the cell-type vignette, which `eval = FALSE`
   had been masking.
+* Figures render at `fig.retina = 1`, `dpi = 96`. BiocStyle's retina default
+  quadrupled every raster for no benefit in an HTML vignette. Building the
+  vignettes still raises the installed size to ~11Mb, most of which is the
+  ~0.9Mb of self-contained BiocStyle assets each of the seven vignettes
+  carries.
 
 ## Tests
 
