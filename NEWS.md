@@ -1,3 +1,43 @@
+# Changes in version 0.99.5 (2026-08-26)
+
+## New Features
+
+* `runSpatialNMF()` - spatially-aware NMF. Adds a graph-Laplacian smoothness
+  penalty `lambda * tr(H L H^T)` over a spatial neighbour graph, so
+  neighbouring spots are pushed toward similar program usage and programs come
+  out as contiguous domains rather than salt-and-pepper. This is the first
+  function in the package that actually calls `spatialCoords()`;
+  SpatialExperiment support was previously nominal. Neighbour graphs are built
+  from coordinates by k-nearest neighbours (BiocNeighbors), a distance radius,
+  or Delaunay triangulation (requires the suggested `deldir`). Passing an
+  adjacency matrix to `graph` instead of a method name uses a precomputed
+  neighbour structure, which is also how a plain SingleCellExperiment can be
+  used. `feature_graph`/`feature_lambda` apply the same penalty to the gene
+  loadings for a co-expression or protein-protein interaction prior. The graph
+  and its parameters are stored in `metadata()` alongside the usual basis and
+  model, so all existing accessors, plots and `FindAllDEPs()` work unchanged.
+* `spatialAutocorrelation()` - Moran's I per program, computed against the
+  stored graph, with optional permutation p-values. This is how to judge
+  whether programs are spatially structured and how to choose `graph_lambda`.
+
+## Notes
+
+* `runSpatialNMF()` does not use RcppML's own `graph_W`, `graph_H` and
+  `graph_lambda` arguments, and rejects them if passed through `...`. In
+  RcppML 1.0.0 they change the fit without making the factors smoother over
+  the supplied graph: relative smoothness over the graph's own edges gets
+  worse as the penalty rises, and a randomly rewired graph with the same
+  degree sequence perturbs the result as much as the true one. What looks like
+  smoothing is uniform shrinkage of H. `RcppML::nmf()` therefore supplies the
+  initialization and the penalty is applied by graph-regularized
+  multiplicative updates.
+* `graph_lambda` is dimensionless. It is rescaled internally against the
+  unregularized fit so that 1 means the graph penalty is one tenth of the
+  initial reconstruction error, and so means the same thing across datasets of
+  different size and scale. Useful values span roughly 0.01 to 10.
+* New vignette, "Spatially-Aware NMF".
+* New dependencies: BiocNeighbors and Matrix in Imports, deldir in Suggests.
+
 # Changes in version 0.99.3 (2026-08-25)
 
 ## Bug Fixes

@@ -173,7 +173,8 @@ runSpatialNMF <- function(x, k, graph = c("knn", "delaunay", "distance"),
         mat <- mat[subset_row, , drop = FALSE]
     }
     if (any(mat < 0)) {
-        warning("Negative values detected. Consider using log-transformed data.")
+        warning("Negative values detected. ",
+                "Consider using log-transformed data.")
         mat[mat < 0] <- 0
     }
 
