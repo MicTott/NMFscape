@@ -1,3 +1,39 @@
+# Changes in version 0.99.5 (2026-08-26)
+
+## New Features
+
+* `alignPrograms()` compares two independently fit NMF models and reports
+  which program in one run corresponds to which program in the other. This is
+  the question `predictNMF()` does not answer: that function projects new data
+  into an existing basis, so the two datasets share programs by construction,
+  whereas `alignPrograms()` matches up programs that were discovered
+  separately. Accepts two SingleCellExperiments, two S4 `nmf` models, or two
+  basis matrices; intersects differing gene sets, tolerates differing `k`, and
+  uses `RcppML::bipartiteMatch()` (the Hungarian algorithm) rather than a
+  greedy argmax, so no program in one run can be claimed by two programs in the
+  other. Returns a `$mapping` data.frame and the full `$similarity` matrix.
+* `plotProgramSimilarity()` draws that similarity matrix as a ggplot2 heatmap
+  with the matched pairs reordered onto the diagonal and outlined.
+* `diagnoseNMF()` surfaces, in one call, the model diagnostics RcppML already
+  computes but NMFscape never exposed: `diagnose_dispersion()`,
+  `diagnose_zero_inflation()`, `score_test_distribution()` and `sparsity()`.
+  It errors informatively for FactorNet-backed results, as `evaluateNMF()`
+  does. RcppML's `variance_explained()` is deliberately not included: despite
+  being a generic, RcppML 1.0.0 defines a method only for `svd` objects, not
+  for `nmf` models.
+* `gpuInfo()` reports whether the installed RcppML build can offload to a GPU
+  and which device it would use. `runNMFscape(verbose = TRUE)` now notes GPU
+  availability when there is one.
+
+## Notes
+
+* `alignPrograms()` floors its bipartite-matching cost matrix at zero.
+  `RcppML::bipartiteMatch()` fails on any negative entry with
+  `argument is of length zero`, because its guard reads an
+  `RcppML.verbose` option that RcppML does not set; identical programs give a
+  cosine similarity of 1 + epsilon, so an unfloored `1 - similarity` would trip
+  it.
+
 # Changes in version 0.99.3 (2026-08-25)
 
 ## Bug Fixes
