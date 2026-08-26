@@ -4,9 +4,13 @@
 #' the representation. Layer 1 finds fine-grained gene programs, subsequent
 #' layers group them into meta-programs. Uses the RcppML FactorNet graph DSL.
 #'
-#' The effective basis matrix (genes x k_final) is computed by propagating
-#' through all layers, mapping original features directly to meta-programs.
-#' Per-layer details are stored separately for exploration.
+#' Layer 1 factorizes the assay matrix; each subsequent layer factorizes the
+#' transpose of the previous layer's H, so the orientation alternates and cells
+#' appear in the even layers' W while features appear in the odd layers' W.
+#' The effective basis (genes x k_final) and cell embedding (cells x k_final)
+#' are formed by propagating through all layers, so both are expressed in the
+#' deepest layer's meta-program space regardless of depth. Per-layer W, H and d
+#' are stored separately for exploration.
 #'
 #' @param x A SingleCellExperiment or SpatialExperiment object
 #' @param k Integer vector of length >= 2, e.g. \code{c(20, 10)}. Each element
@@ -31,9 +35,8 @@
 #'
 #' @return The input object with deep NMF results stored in:
 #'   \itemize{
-#'     \item \code{reducedDim(x, name)}: cells x k[last] coefficient matrix.
-#'       For a 2-layer model, this is layer 2's W matrix (cells x k2) since
-#'       layer 2 factorizes t(H1) where W represents cells.
+#'     \item \code{reducedDim(x, name)}: cells x k[last] coefficient matrix,
+#'       propagated through every layer.
 #'     \item \code{metadata(x)[[paste0(name, "_basis")]]}: genes x k[last]
 #'       effective basis matrix (product through all layers), mapping original
 #'       features directly to meta-programs
@@ -55,6 +58,10 @@
 #' layers <- metadata(sce)$DeepNMF_layers
 #' dim(layers$layer_1$W)  # genes x 15
 #' dim(layers$layer_2$W)  # cells x 5
+#'
+#' # Three or more layers are supported; the embedding is always k[last]
+#' sce <- runDeepNMF(sce, k = c(20, 10, 5), name = "DeepNMF3")
+#' dim(reducedDim(sce, "DeepNMF3"))
 #'
 #' @export
 #' @importFrom RcppML factor_input nmf_layer factor_net factor_config fit
@@ -114,102 +121,58 @@ runDeepNMF <- function(x, k, assay = "logcounts", name = "DeepNMF",
     })
     names(layer_data) <- paste0("layer_", seq_along(k))
 
-    # Compute effective basis: maps original features to final meta-programs
-    # Layer 1: mat (features x cells) = W1 * D1 * H1
-    # Layer 2: t(H1) (cells x k1) = W2 * D2 * H2
-    # => H1 = t(W2 * D2 * H2) = t(H2) * D2 * t(W2)
-    # => mat = W1 * D1 * t(H2) * D2 * t(W2)
-    # Effective gene basis = W1 * D1 * t(H2) * D2 (for 2 layers)
-    # Cell embedding = W2 (for 2 layers)
-    #
-    # General pattern for n layers:
-    # Layer i factorizes t(H_{i-1}), so odd layers have W = features/programs,
-    # even layers have W = cells/samples (since the input alternates orientation)
-    # The cell embedding is always in the last layer's W (if n_layers is even)
-    # or last layer's H transposed (if n_layers is odd... but we handle both)
-
-    # For the cell embedding: layer 2+ factorizes t(H_{prev}).
-    # Last layer W has dims: (ncol_of_prev_H x k_last)
-    # If n_layers == 2: last W is (cells x k2) = cell embedding
-    # If n_layers == 3: layer 3 factorizes t(H2) where H2 is (k2 x k1),
-    #   so layer 3 W is (k1 x k3) and H3 is (k3 x k2).
-    #   Cell embedding would need to trace back through W2.
-
-    # Simple approach: compute the effective cell embedding as the product
-    # of layer Ws from layer 2 onward (with d absorbed)
     last_layer <- result$layers[[paste0("layer_", n_layers)]]
 
-    # Build effective gene basis by multiplying through layers
-    # Start with W1 * D1
-    l1 <- result$layers$layer_1
-    w_eff <- l1$W %*% diag(l1$d, nrow = length(l1$d))
-
-    # For layers 2..n: the relationship alternates.
-    # Layer 2 factorizes t(H1): t(H1) = W2 * D2 * H2, so H1 = t(H2)*D2*t(W2)
-    # Layer 3 factorizes t(H2): t(H2) = W3 * D3 * H3, so H2 = t(H3)*D3*t(W3)
-    # Substituting: H1 = t(t(H3)*D3*t(W3)) * D2 * t(W2)
-    #             = W3*D3*H3 * D2 * t(W2)
-    # And mat = W1*D1 * W3*D3*H3 * D2 * t(W2)
+    # Compute the effective decomposition A ~ Basis %*% diag(d_n) %*% t(Coeff).
     #
-    # For even number of layers, the cell embedding is W2 (with D2 absorbed
-    # from the right side chain).
-    # This gets complex for > 2 layers. Let's use a recursive approach.
-
-    # Effective gene basis = maps features to k_final
-    # We build it by propagating W and d through the chain.
-    # The key: each subsequent layer factorizes the TRANSPOSE of the previous H.
-    # So we need to track whether the current "effective" is row-oriented or
-    # column-oriented.
-
-    # For 2-layer case (most common):
-    # Effective basis (features x k2): W1 * D1 * t(H2) * D2
-    # Cell embedding (cells x k2): W2
-    if (n_layers == 2) {
-        l2 <- result$layers$layer_2
-        if (absorb_d) {
-            sqrt_d2 <- sqrt(l2$d)
-            k2 <- length(sqrt_d2)
-            eff_basis <- w_eff %*% t(l2$H) %*% diag(sqrt_d2, nrow = k2)
-            coeff_matrix <- l2$W %*% diag(sqrt_d2, nrow = k2)
-        } else {
-            eff_basis <- w_eff %*% t(l2$H) %*% diag(l2$d, nrow = length(l2$d))
-            coeff_matrix <- l2$W
+    # Layer 1 factorizes A; layer i > 1 factorizes t(H_{i-1}), so the
+    # orientation alternates: odd layers carry the feature/program side,
+    # even layers carry the cell side. Unrolling
+    #   A         ~ W1 D1 H1
+    #   H_{i-1}   ~ t(H_i) D_i t(W_i)
+    # gives an alternating product, e.g. for n = 3
+    #   A ~ (W1 D1 W3) D3 (H3 D2 t(W2))
+    # so the feature side is the ascending product over odd layers and the
+    # cell side the ascending product over even layers, with the deepest
+    # layer's H joining whichever side is one step short.
+    .chainProduct <- function(idx, hold_last_d) {
+        acc <- NULL
+        for (j in seq_along(idx)) {
+            li <- result$layers[[paste0("layer_", idx[j])]]
+            term <- if (hold_last_d && j == length(idx)) {
+                li$W
+            } else {
+                li$W %*% diag(li$d, nrow = length(li$d))
+            }
+            acc <- if (is.null(acc)) term else acc %*% term
         }
+        acc
+    }
+
+    odd <- seq(1, n_layers, by = 2)
+    even <- seq(2, n_layers, by = 2)
+    n_is_even <- n_layers %% 2 == 0
+
+    # The deepest layer's d is held back so it can be split symmetrically.
+    feature_side <- .chainProduct(odd, hold_last_d = !n_is_even)
+    cell_side <- .chainProduct(even, hold_last_d = n_is_even)
+
+    if (n_is_even) {
+        eff_basis <- feature_side %*% t(last_layer$H)
+        coeff_matrix <- cell_side
     } else {
-        # General case: multiply through the chain
-        # For simplicity, use the raw factorization to compute effective matrices
-        # Reconstruct H1 from layers 2..n, then effective basis = W1 * D1 * [reconstructed H path]
-        # This is recursive: H_{i} = t(W_{i+1} * D_{i+1} * H_{i+1})
-        # Start from the deepest layer and work backwards
+        eff_basis <- feature_side
+        coeff_matrix <- cell_side %*% t(last_layer$H)
+    }
 
-        # Reconstruct the chain from the last layer backwards
-        # h_current starts as H_n (the deepest layer's H)
-        h_current <- last_layer$H  # k_n x k_{n-1}
-        d_current <- last_layer$d
-
-        # Multiply backwards through layers n-1 to 2
-        for (i in seq(n_layers - 1, 2, by = -1)) {
-            li <- result$layers[[paste0("layer_", i)]]
-            # H_{i-1} = t(W_i * D_i * H_i) at this level
-            # But we're building from the end: the effective representation
-            # of the final embedding in terms of layer i's space
-            reconstructed <- li$W %*% diag(li$d, nrow = length(li$d)) %*%
-                             h_current
-            h_current <- reconstructed
-            d_current <- rep(1, nrow(h_current))  # already absorbed
-        }
-
-        # Now h_current maps from layer 1's H space to the final embedding
-        # Effective basis = W1 * D1 * t(h_current)
-        if (absorb_d) {
-            sqrt_d_last <- sqrt(last_layer$d)
-            k_last <- length(sqrt_d_last)
-            eff_basis <- w_eff %*% t(h_current)
-            coeff_matrix <- last_layer$W
-        } else {
-            eff_basis <- w_eff %*% t(h_current)
-            coeff_matrix <- last_layer$W
-        }
+    d_last <- last_layer$d
+    k_last <- length(d_last)
+    if (absorb_d) {
+        sqrt_d <- sqrt(d_last)
+        eff_basis <- eff_basis %*% diag(sqrt_d, nrow = k_last)
+        coeff_matrix <- coeff_matrix %*% diag(sqrt_d, nrow = k_last)
+    } else {
+        eff_basis <- eff_basis %*% diag(d_last, nrow = k_last)
     }
 
     k_final <- k[n_layers]

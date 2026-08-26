@@ -13,8 +13,8 @@ runConditionedNMF(
   subset_row = NULL,
   tol = 1e-05,
   maxit = 100,
-  L1 = c(0, 0),
-  L2 = c(0, 0),
+  L1 = 0,
+  L2 = 0,
   distribution = "mse",
   absorb_d = TRUE,
   seed = NULL,
@@ -41,9 +41,13 @@ numeric values are used directly.}
 
 \item{maxit}{Integer, maximum iterations (default 100)}
 
-\item{L1}{Numeric vector of length 2, L1 regularization (default c(0,0))}
+\item{L1}{Numeric scalar, L1 regularization applied to each NMF layer
+(default 0). Note this differs from \code{\link{runNMFscape}}, which takes a
+length-2 c(w, h) vector; \code{\link[RcppML]{nmf_layer}} uses one penalty
+per layer.}
 
-\item{L2}{Numeric vector of length 2, L2 regularization (default c(0,0))}
+\item{L2}{Numeric scalar, L2 regularization applied to each NMF layer
+(default 0)}
 
 \item{distribution}{Character, loss function (default "mse")}
 

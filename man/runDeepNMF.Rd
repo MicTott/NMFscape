@@ -12,8 +12,8 @@ runDeepNMF(
   subset_row = NULL,
   tol = 1e-05,
   maxit = 100,
-  L1 = c(0, 0),
-  L2 = c(0, 0),
+  L1 = 0,
+  L2 = 0,
   distribution = "mse",
   absorb_d = TRUE,
   seed = NULL,
@@ -38,9 +38,13 @@ layers compress the previous layer's output).}
 
 \item{maxit}{Integer, maximum iterations (default 100)}
 
-\item{L1}{Numeric vector of length 2, L1 regularization (default c(0,0))}
+\item{L1}{Numeric scalar, L1 regularization applied to each NMF layer
+(default 0). Note this differs from \code{\link{runNMFscape}}, which takes a
+length-2 c(w, h) vector; \code{\link[RcppML]{nmf_layer}} uses one penalty
+per layer.}
 
-\item{L2}{Numeric vector of length 2, L2 regularization (default c(0,0))}
+\item{L2}{Numeric scalar, L2 regularization applied to each NMF layer
+(default 0)}
 
 \item{distribution}{Character, loss function (default "mse")}
 
@@ -55,9 +59,8 @@ layers compress the previous layer's output).}
 \value{
 The input object with deep NMF results stored in:
   \itemize{
-    \item \code{reducedDim(x, name)}: cells x k[last] coefficient matrix.
-      For a 2-layer model, this is layer 2's W matrix (cells x k2) since
-      layer 2 factorizes t(H1) where W represents cells.
+    \item \code{reducedDim(x, name)}: cells x k[last] coefficient matrix,
+      propagated through every layer.
     \item \code{metadata(x)[[paste0(name, "_basis")]]}: genes x k[last]
       effective basis matrix (product through all layers), mapping original
       features directly to meta-programs
@@ -72,9 +75,13 @@ the representation. Layer 1 finds fine-grained gene programs, subsequent
 layers group them into meta-programs. Uses the RcppML FactorNet graph DSL.
 }
 \details{
-The effective basis matrix (genes x k_final) is computed by propagating
-through all layers, mapping original features directly to meta-programs.
-Per-layer details are stored separately for exploration.
+Layer 1 factorizes the assay matrix; each subsequent layer factorizes the
+transpose of the previous layer's H, so the orientation alternates and cells
+appear in the even layers' W while features appear in the odd layers' W.
+The effective basis (genes x k_final) and cell embedding (cells x k_final)
+are formed by propagating through all layers, so both are expressed in the
+deepest layer's meta-program space regardless of depth. Per-layer W, H and d
+are stored separately for exploration.
 }
 \examples{
 library(scuttle)
@@ -89,5 +96,9 @@ dim(getBasis(sce, "DeepNMF"))
 layers <- metadata(sce)$DeepNMF_layers
 dim(layers$layer_1$W)  # genes x 15
 dim(layers$layer_2$W)  # cells x 5
+
+# Three or more layers are supported; the embedding is always k[last]
+sce <- runDeepNMF(sce, k = c(20, 10, 5), name = "DeepNMF3")
+dim(reducedDim(sce, "DeepNMF3"))
 
 }
