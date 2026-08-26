@@ -6,7 +6,13 @@
 #' \code{\link{predictNMF}} and \code{\link{refineNMF}}.
 #'
 #' @param x A SingleCellExperiment or SpatialExperiment object
-#' @param k Integer, number of factors for NMF (rank)
+#' @param k Integer, number of factors for NMF (rank). If \code{NULL} (the
+#'   default), a rank is chosen by cross-validation over \code{k_range} using
+#'   \code{\link{selectRank}} and reported. Supplying \code{k} skips that
+#'   step, which is much faster; choosing it deliberately with
+#'   \code{\link{selectRank}} and \code{\link{plotRankSelection}} is
+#'   preferable for real analyses, since the cross-validation minimum is not
+#'   always the most interpretable rank.
 #' @param assay Character or integer, which assay to use (default "logcounts")
 #' @param name Character, name for the reducedDim slot (default "NMF")
 #' @param subset_row Vector specifying which features to use
@@ -23,6 +29,8 @@
 #'   coefficient matrices satisfy A ~ W_eff \%*\% t(H_eff). When FALSE, raw W
 #'   and H are stored and the diagonal is available via \code{\link{getDiagonal}}.
 #' @param seed Integer, random seed for reproducibility
+#' @param k_range Integer vector of candidate ranks searched when \code{k} is
+#'   \code{NULL} (default \code{seq(2, 20, by = 2)}). Ignored otherwise.
 #' @param verbose Logical, whether to print progress (default TRUE)
 #' @param ... Additional arguments passed to \code{\link[RcppML]{nmf}}, including
 #'   \code{nonneg}, \code{robust}, \code{zi}, \code{projective}, \code{symmetric}
@@ -40,6 +48,9 @@
 #' sce <- logNormCounts(sce)
 #' sce <- runNMFscape(sce, k = 10)
 #'
+#' # Omitting k cross-validates one and reports the choice
+#' sce <- runNMFscape(sce, name = "NMF_auto")
+#'
 #' # Access results
 #' nmf_coords <- reducedDim(sce, "NMF")
 #' basis <- metadata(sce)$NMF_basis
@@ -49,11 +60,12 @@
 #' @importFrom RcppML nmf
 #' @importFrom SingleCellExperiment reducedDim<-
 #' @importFrom S4Vectors metadata<-
-runNMFscape <- function(x, k, assay = "logcounts", name = "NMF",
+runNMFscape <- function(x, k = NULL, assay = "logcounts", name = "NMF",
                         subset_row = NULL, tol = 1e-5, maxit = 100,
                         L1 = c(0, 0), L2 = c(0, 0),
                         distribution = "mse", absorb_d = TRUE,
-                        seed = NULL, verbose = TRUE, ...) {
+                        seed = NULL, k_range = seq(2, 20, by = 2),
+                        verbose = TRUE, ...) {
 
     if (!is(x, "SingleCellExperiment")) {
         stop("x must be a SingleCellExperiment or SpatialExperiment object")
@@ -64,6 +76,24 @@ runNMFscape <- function(x, k, assay = "logcounts", name = "NMF",
     }
 
     feature_names <- .subsetRowNames(x, subset_row)
+
+    # Choosing k is the hardest decision a first-time user faces, so omitting
+    # it runs the cross-validation rather than making them guess. The chosen
+    # value is reported, not hidden, so it can be pinned on the next run.
+    if (is.null(k)) {
+        if (verbose) {
+            message("No k supplied; selecting one by cross-validation over ",
+                    "k = ", min(k_range), ":", max(k_range), "...")
+        }
+        cv <- selectRank(x, k = k_range, assay = assay,
+                         subset_row = subset_row, distribution = distribution,
+                         seed = seed, verbose = FALSE)
+        k <- cv$k[which.min(cv$test_error)]
+        if (verbose) {
+            message("Selected k = ", k, ". Pass k = ", k,
+                    " to skip this step next time.")
+        }
+    }
 
     mat <- assay(x, assay)
 

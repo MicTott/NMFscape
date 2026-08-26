@@ -54,3 +54,37 @@ test_that("alignPrograms matches programs between independent fits", {
     expect_equal(sum(al2$mapping$matched), 3L)
     expect_s3_class(plotProgramSimilarity(al2), "ggplot")
 })
+
+test_that("programStability separates real programs from noise splits", {
+    # data with exactly three real programs
+    set.seed(4)
+    ng <- 300; nc <- 200; k_true <- 3
+    w <- matrix(0.3, ng, k_true)
+    for (j in seq_len(k_true)) {
+        w[((j - 1) * 100 + 1):(j * 100), j] <- runif(100, 1, 2)
+    }
+    grp <- sample(k_true, nc, replace = TRUE)
+    h <- matrix(0.3, k_true, nc)
+    h[cbind(grp, seq_len(nc))] <- runif(nc, 1, 2)
+    mat <- w %*% h
+    mat <- log1p(mat * exp(rnorm(length(mat), 0, 0.6)) / max(mat) * 60)
+    dimnames(mat) <- list(paste0("g", seq_len(ng)), paste0("c", seq_len(nc)))
+    sce <- SingleCellExperiment::SingleCellExperiment(list(logcounts = mat))
+
+    # fitting past the true rank must leave the surplus programs unstable
+    over <- consensusNMF(sce, k = 6, n_runs = 10, seed = 1, verbose = FALSE)
+    st <- programStability(over)
+
+    expect_equal(nrow(st), 6L)
+    # the real programs stay perfectly reproducible; the surplus ones do not
+    expect_equal(max(st$frequency), 1)
+    expect_lt(min(st$frequency), 1)
+    expect_lt(min(st$mean_similarity), max(st$mean_similarity))
+})
+
+test_that("runNMFscape chooses k when none is supplied", {
+    sce <- makeSCE()
+    expect_message(fit <- runNMFscape(sce, k_range = c(2, 4)),
+                   "Selected k =")
+    expect_true(ncol(reducedDim(fit, "NMF")) %in% c(2, 4))
+})

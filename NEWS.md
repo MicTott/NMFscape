@@ -48,6 +48,19 @@
 
 ## New Features
 
+* `programStability()` reports, per program, how often it reappeared across
+  `consensusNMF()` replicates and how closely. `consensusNMF()` already gives
+  a single cophenetic coefficient, which answers "is this rank stable?" but
+  not "which of my programs can I trust?". Fitting three real programs at
+  k = 6 leaves the three genuine ones recovered in every replicate while the
+  surplus ones drop away, so the score separates signal from noise splits.
+  It reuses the stored replicate models and `alignPrograms()` rather than
+  adding new machinery.
+* `runNMFscape()` now chooses `k` by cross-validation when none is supplied,
+  over `k_range` (default `seq(2, 20, by = 2)`), and reports the value it
+  picked so it can be pinned on the next run. Supplying `k` behaves exactly as
+  before.
+
 * `alignPrograms()` compares two independently fit NMF models and reports
   which program in one run corresponds to which program in the other. This is
   the question `predictNMF()` does not answer: that function projects new data

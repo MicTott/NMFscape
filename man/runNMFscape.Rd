@@ -6,7 +6,7 @@
 \usage{
 runNMFscape(
   x,
-  k,
+  k = NULL,
   assay = "logcounts",
   name = "NMF",
   subset_row = NULL,
@@ -17,6 +17,7 @@ runNMFscape(
   distribution = "mse",
   absorb_d = TRUE,
   seed = NULL,
+  k_range = seq(2, 20, by = 2),
   verbose = TRUE,
   ...
 )
@@ -24,7 +25,13 @@ runNMFscape(
 \arguments{
 \item{x}{A SingleCellExperiment or SpatialExperiment object}
 
-\item{k}{Integer, number of factors for NMF (rank)}
+\item{k}{Integer, number of factors for NMF (rank). If \code{NULL} (the
+default), a rank is chosen by cross-validation over \code{k_range} using
+\code{\link{selectRank}} and reported. Supplying \code{k} skips that
+step, which is much faster; choosing it deliberately with
+\code{\link{selectRank}} and \code{\link{plotRankSelection}} is
+preferable for real analyses, since the cross-validation minimum is not
+always the most interpretable rank.}
 
 \item{assay}{Character or integer, which assay to use (default "logcounts")}
 
@@ -52,6 +59,9 @@ and H are stored and the diagonal is available via \code{\link{getDiagonal}}.}
 
 \item{seed}{Integer, random seed for reproducibility}
 
+\item{k_range}{Integer vector of candidate ranks searched when \code{k} is
+\code{NULL} (default \code{seq(2, 20, by = 2)}). Ignored otherwise.}
+
 \item{verbose}{Logical, whether to print progress (default TRUE)}
 
 \item{...}{Additional arguments passed to \code{\link[RcppML]{nmf}}, including
@@ -76,6 +86,9 @@ library(scuttle)
 sce <- mockSCE()
 sce <- logNormCounts(sce)
 sce <- runNMFscape(sce, k = 10)
+
+# Omitting k cross-validates one and reports the choice
+sce <- runNMFscape(sce, name = "NMF_auto")
 
 # Access results
 nmf_coords <- reducedDim(sce, "NMF")
