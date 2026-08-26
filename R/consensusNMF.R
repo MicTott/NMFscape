@@ -23,6 +23,10 @@
 #'       (from first replicate)
 #'     \item \code{metadata(x)[[paste0(name, "_basis")]]}: genes x k basis
 #'       matrix
+#'     \item \code{metadata(x)[[paste0(name, "_model")]]}: the representative
+#'       replicate as a raw RcppML S4 nmf object, so that \code{\link{getModel}},
+#'       \code{\link{getDiagonal}}, \code{\link{evaluateNMF}} and
+#'       \code{\link{diagnoseNMF}} work on consensus results
 #'     \item \code{metadata(x)[[paste0(name, "_consensus")]]}: full consensus
 #'       result list (consensus matrix, clusters, cophenetic, hclust)
 #'   }
@@ -96,6 +100,7 @@ consensusNMF <- function(x, k, assay = "logcounts", name = "cNMF",
     # Store results
     reducedDim(x, name) <- coeff_matrix
     metadata(x)[[paste0(name, "_basis")]] <- basis_matrix
+    metadata(x)[[paste0(name, "_model")]] <- model
     metadata(x)[[paste0(name, "_consensus")]] <- cres
 
     if (verbose) {
