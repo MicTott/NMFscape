@@ -2,7 +2,7 @@ Package: NMFscape
 Type: Package
 Title: Fast Non-negative Matrix Factorization for Single Cell and Spatial Data
 Version: 0.99.5
-Date: 2026-08-25
+Date: 2026-08-26
 Authors@R: c(
     person("Michael", "Totty", email = "mictott@gmail.com", 
     role = c("aut", "cre"), comment = c(ORCID = "0000-0002-9292-8556")

@@ -22,6 +22,7 @@ importFrom(RcppML, diagnose_zero_inflation)
 importFrom(RcppML, score_test_distribution)
 importFrom(RcppML, gpu_available)
 importFrom(RcppML, gpu_info)
+importFrom(RcppML, cross_validate_graph)
 importMethodsFrom(RcppML, predict)
 importMethodsFrom(RcppML, evaluate)
 importMethodsFrom(RcppML, sparsity)
@@ -30,11 +31,15 @@ importFrom(S4Vectors, metadata, "metadata<-")
 importFrom(SummarizedExperiment, assay, assayNames)
 importFrom(SingleCellExperiment, reducedDim, "reducedDim<-", reducedDimNames, altExp, altExpNames)
 importFrom(SummarizedExperiment, colData, "colData<-")
-importFrom(utils, packageDescription, head)
+importFrom(utils, packageDescription, head, modifyList)
 importFrom(scran, findMarkers)
 importFrom(stats, rnorm, cor, reorder, kmeans, dist, hclust, cophenetic, as.dist, median, model.matrix, na.omit)
-importFrom(ggplot2, ggplot, aes, geom_point, geom_line, geom_hline, geom_vline, geom_errorbar, scale_color_manual, scale_color_viridis_c, scale_color_gradient, scale_size_continuous, facet_wrap, theme, theme_bw, theme_classic, theme_minimal, labs, element_text, element_line, element_blank, ggtitle, xlab, ylab, scale_color_gradientn)
-importFrom(ggplot2, geom_tile, geom_text, scale_fill_gradientn, coord_fixed)
+importFrom(ggplot2, ggplot, aes, geom_point, geom_line, geom_hline,
+    geom_vline, geom_errorbar, scale_color_manual, scale_color_viridis_c,
+    scale_color_gradient, scale_size_continuous, facet_wrap, theme, theme_bw,
+    theme_classic, theme_minimal, labs, element_text, element_line,
+    element_blank, ggtitle, xlab, ylab, scale_color_gradientn, geom_tile,
+    scale_fill_viridis_c, geom_text, scale_fill_gradientn, coord_fixed)
 
 export(runNMFscape)
 export(getBasis)
@@ -66,3 +71,5 @@ export(alignPrograms)
 export(plotProgramSimilarity)
 export(diagnoseNMF)
 export(gpuInfo)
+export(tuneNMF)
+export(plotTuning)

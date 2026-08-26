@@ -62,3 +62,9 @@ cv_results <- selectRank(sce, k = 2:8)
 cv_results
 
 }
+\seealso{
+\code{\link{tuneNMF}}, which generalises this held-out
+  cross-validation to any FactorNet recipe (deep, multi-modal, conditioned)
+  and to any \code{\link[RcppML]{nmf_layer}} parameter, not just \code{k},
+  and \code{\link{plotRankSelection}} to plot the result.
+}

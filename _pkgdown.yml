@@ -70,6 +70,8 @@ reference:
   contents:
   - selectRank
   - plotRankSelection
+  - tuneNMF
+  - plotTuning
   - selectDistribution
   - evaluateNMF
   - assessNMF
