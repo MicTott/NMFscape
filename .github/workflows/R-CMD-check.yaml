@@ -19,8 +19,8 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {os: ubuntu-latest, r: 'release', bioc: 'devel'}
-          - {os: macos-latest, r: 'release', bioc: 'devel'}
+          - {os: ubuntu-latest, r: 'release'}
+          - {os: macos-latest, r: 'release'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -36,10 +36,12 @@ jobs:
           r-version: ${{ matrix.config.r }}
           use-public-rspm: true
 
-      - name: Install BiocManager and set Bioconductor repositories
+      # Take whichever Bioconductor release pairs with the installed R rather
+      # than pinning devel, which requires R-devel and made this step's
+      # dependency resolution fail on R release.
+      - name: Set Bioconductor repositories
         run: |
           install.packages("BiocManager")
-          BiocManager::install(version = "${{ matrix.config.bioc }}", ask = FALSE)
           cat(sprintf('options(repos = c(%s))\n',
                       paste(sprintf('"%s" = "%s"', names(BiocManager::repositories()),
                                     BiocManager::repositories()), collapse = ", ")),
